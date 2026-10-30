@@ -29,7 +29,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gaissmai/bart v0.26.1 // indirect
-	github.com/go-chi/chi/v5 v5.2.5 // indirect
+	github.com/go-chi/chi/v5 v5.4.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/gofrs/uuid/v5 v5.5.1 // indirect
