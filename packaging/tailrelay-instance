@@ -1,0 +1,28 @@
+#!/bin/sh
+# Prepare one service account and state directory; never enroll or start it.
+set -eu
+die() { echo "tailrelay-instance: $1" >&2; exit 1; }
+test "$(id -u)" = 0 || die "must run as root"
+test "$#" = 1 || die "usage: tailrelay-instance INSTANCE"
+instance=$1
+case "$instance" in
+    ''|*[!a-z0-9-]*|-*|*-) die "use a lowercase DNS label" ;;
+esac
+test "${#instance}" -le 22 || die "instance must contain at most 22 characters"
+account=tailrelay-$instance
+state=/var/lib/tailrelay/$instance
+if ! getent passwd "$account" >/dev/null; then
+    adduser --system --group --home "$state" --no-create-home \
+        --shell /usr/sbin/nologin "$account"
+fi
+test "$(id -u "$account")" != 0 || die "refusing a privileged instance account"
+test "$(id -gn "$account")" = "$account" || die "instance needs its own primary group"
+install -d -m 0755 /etc/tailrelay /var/lib/tailrelay
+if [ -e "$state" ] || [ -L "$state" ]; then
+    test -d "$state" && test ! -L "$state" || die "state path is not a real directory"
+    test "$(stat -c %u "$state")" = "$(id -u "$account")" || die "state belongs to another user"
+    test "$(stat -c %a "$state")" = 700 || die "state must have mode 0700"
+else
+    install -d -m 0700 -o "$account" -g "$account" "$state"
+fi
+echo "Prepared $account and $state; configure /etc/tailrelay/$instance.yaml before starting it."

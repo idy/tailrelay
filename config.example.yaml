@@ -1,0 +1,30 @@
+version: 1
+name: isp-sf
+
+# Every instance must have its own name and persistent state directory.
+state_dir: /var/lib/tailrelay/isp-sf
+log_level: warn
+
+tailscale:
+  hostname: tailrelay-isp-sf
+  # Optional bootstrap key. An unset variable uses the retained login state.
+  auth_key_env: TAILRELAY_AUTH_KEY
+  # tags: [tag:tailrelay]
+  # expected_tailnet: example.com
+  # 0 lets the OS choose a free UDP port for each independent process.
+  listen_port: 0
+
+proxy:
+  # Replace this documentation address with the ISP's SOCKS5 endpoint.
+  server: 203.0.113.10:12324
+  credentials_file: /etc/tailrelay/isp-sf.credentials.json
+  connect_timeout: 10s
+  # Most ISP HTTP/SOCKS products do not support UDP. Never bypass them.
+  udp: false
+
+dns:
+  # Client DNS: verified HTTPS, sent through this instance's ISP proxy.
+  server: 1.1.1.1
+  port: 443
+  server_name: cloudflare-dns.com
+  path: /dns-query

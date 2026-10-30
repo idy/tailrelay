@@ -1,0 +1,41 @@
+[Unit]
+Description=TailRelay ISP Exit Node (%i)
+Documentation=file:/usr/share/doc/tailrelay/README.md
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# Create a persistent, unprivileged user for each instance before starting it.
+User=tailrelay-%i
+Group=tailrelay-%i
+StateDirectory=tailrelay/%i
+StateDirectoryMode=0700
+UMask=0077
+LoadCredential=proxy:/etc/tailrelay/%i.credentials.json
+# Only needed for first enrollment. Delete the env file after identity is saved.
+EnvironmentFile=-/etc/tailrelay/%i.env
+ExecStart=/usr/bin/tailrelay run -c /etc/tailrelay/%i.yaml --state-dir /var/lib/tailrelay/%i --credentials-file %d/proxy
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

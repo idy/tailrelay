@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+    install -d -m 0755 /etc/tailrelay /var/lib/tailrelay
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        # First installation starts nothing. Upgrade only restarts instances
+        # that are already active, respecting the machine's policy-rc.d.
+        systemctl list-units --type=service --state=active --no-legend --plain 'tailrelay@*.service' |
+            while read -r unit rest; do
+                case "$unit" in
+                    tailrelay@*.service) deb-systemd-invoke try-restart "$unit" || true ;;
+                esac
+            done
+    fi
+fi

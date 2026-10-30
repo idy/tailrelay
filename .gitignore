@@ -1,0 +1,7 @@
+/bin/
+/state/
+!Makefile
+/*.credentials.json
+/*.auth-key
+/*.env
+/*.local.yaml

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+fi
+# Operator configuration, credentials, device identities and per-instance users
+# survive remove and purge. Reinstalling must not silently create new devices.
