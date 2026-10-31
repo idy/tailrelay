@@ -25,6 +25,7 @@ import (
 	"github.com/sagernet/sing-box/dns/transport/local"
 	singlog "github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/tun"
 	singJSON "github.com/sagernet/sing/common/json"
 )
 
@@ -38,7 +39,9 @@ func engineContext(ctx context.Context) context.Context {
 	transports := dns.NewTransportRegistry()
 	local.RegisterTransport(transports)
 	transport.RegisterHTTPS(transports)
-	return box.Context(ctx, inbound.NewRegistry(), out, endpoints, transports, service.NewRegistry(), certificate.NewRegistry())
+	inbounds := inbound.NewRegistry()
+	tun.RegisterInbound(inbounds)
+	return box.Context(ctx, inbounds, out, endpoints, transports, service.NewRegistry(), certificate.NewRegistry())
 }
 
 func parseNative(ctx context.Context, wire []byte) (option.Options, error) {

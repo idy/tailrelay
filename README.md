@@ -15,8 +15,36 @@
 对应服务用户的文件属主。
 
 TailRelay 内嵌 sing-box 1.14.4 和用户态 Tailscale，不依赖主机的
-`tailscaled`，不创建内核 TUN，不修改主机默认路由、系统 DNS、IP forwarding、
-iptables 或其他 VPN 服务。服务可以使用普通用户运行。
+`tailscaled`，默认不创建内核 TUN，不修改主机默认路由、系统 DNS、IP forwarding、
+iptables 或其他 VPN 服务。默认服务可以使用普通用户运行。0.1.2 增加显式的
+`local_tun` 选项，将一个 TUN 放进已存在的独立 namespace，供本机应用透明出网。
+
+## 本机 namespace 的透明出网
+
+现有 TailRelay 实例可同时服务 Tailnet 客户端和一个本地 namespace：
+
+```yaml
+local_tun:
+  namespace: letsolo-claude-3
+  interface_name: tr-tun
+  management_subnet: 169.254.197.0/30
+```
+
+namespace 必须由部署层预先创建，并先装好独立的默认 DROP 防火墙。TailRelay
+仅在指定 namespace 内创建 TUN 和路由；自己的 Tailscale 控制连接、ISP TCP
+连接和设备状态目录保持原样。本地 TUN 与 Tailnet 转发共用同一个 ISP、DoH、
+协议限制和认证闸门，认证失效时两者都被阻断。交互式 `login` 不创建本地 TUN。
+
+此模式需要显式授予 `CAP_SYS_ADMIN`（进入已有 network namespace）、
+`CAP_NET_ADMIN` 和 `/dev/net/tun` 访问权限。默认安装的无能力 systemd 服务
+不会自动获得这些权限。Magpie 的 Terraform 部署用按实例的 drop-in 授予权限，
+并管理 namespace 里的防火墙、DNS、管理网段排除和 Magpie 代理变量清除。
+普通 Magpie 用户不获得这些权限。
+
+namespace DNS 使用 `172.29.0.2`，由 TUN 截获后经该实例的 ISP 请求 DoH；
+部署层管理该 namespace 的 `resolv.conf`，TailRelay 不写宿主机的 DNS。
+停止 TailRelay 或删除 TUN 不会卸载部署层的 DROP 规则。本地应用不用设置
+HTTP/SOCKS 代理；UDP 和 ICMP 仍遵守下文的转发限制。
 
 ## 转发策略
 
@@ -62,6 +90,40 @@ bin/tailrelay-linux-arm64
 ```
 
 `with_gvisor` 构建标签是必需的，Makefile 已配置。
+
+### CI snapshot 下载
+
+`.github/workflows/tailrelay.yml` 在 PR 上测试、构建并上传 Actions artifact；
+默认分支 push 或在默认分支手动运行时，Linux/macOS 测试及 Linux namespace
+TUN 验证全部通过后，会创建 GitHub snapshot prerelease。发布标签为
+`tailrelay-snapshot-<完整的源码 commit>`，不会覆盖同 commit 的已发布文件，
+也不会占用仓库正式 release 的 Latest。
+
+每份 snapshot 固定包含四个文件：
+
+- `tailrelay-linux-amd64`
+- `tailrelay-linux-arm64`
+- `release-manifest.json`：源码 commit、snapshot 版本、架构、文件大小及 SHA256。
+- `SHA256SUMS`：两种 binary 和清单的校验值。
+
+binary 的 `tailrelay version` 同时包含 `VERSION+snapshot.<12 位 commit>`
+和完整 commit。发布先创建 draft，下载并验证远端文件后才公开为 prerelease；
+失败重跑只补传缺失文件，已有文件内容不符时直接报错。
+Actions artifact 保留 14 天；已发布 snapshot 通过 GitHub Releases 下载。
+
+```sh
+SNAPSHOT_COMMIT='填入完整的源码 commit'
+gh release download "tailrelay-snapshot-$SNAPSHOT_COMMIT" \
+  --repo idy/letsolo --dir tailrelay-snapshot
+(cd tailrelay-snapshot && shasum -a 256 --check SHA256SUMS)
+```
+
+部署应记录选定的 commit 和校验值，再把已验证的 binary 作为 `hosted_file`
+输入。snapshot 发布本身不会执行 Terraform apply 或重启服务；现有部署准备
+脚本仍使用本地构建路径，尚未自动下载 snapshot。
+本地可在干净 checkout 执行 `make snapshot`；未提交代码的本地验证可执行
+`python3 -B packaging/snapshot.py build --allow-dirty --directory bin/local-snapshot`，
+但这种产物不能发布。
 
 Debian/APT 包使用项目共享的 server-apt 构建和发布流程，版本由 `VERSION`
 管理，支持 amd64 和 arm64：

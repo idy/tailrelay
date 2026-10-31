@@ -35,6 +35,15 @@ type Config struct {
 	Tailscale TailscaleConfig `yaml:"tailscale"`
 	Proxy     ProxyConfig     `yaml:"proxy"`
 	DNS       DNSConfig       `yaml:"dns"`
+	LocalTUN  *LocalTUNConfig `yaml:"local_tun,omitempty"`
+}
+
+// LocalTUNConfig gives an existing, separately firewalled namespace the same
+// restricted ISP egress as Tailnet clients. Control sockets stay on the host.
+type LocalTUNConfig struct {
+	Namespace        string `yaml:"namespace"`
+	InterfaceName    string `yaml:"interface_name"`
+	ManagementSubnet string `yaml:"management_subnet"`
 }
 
 type TailscaleConfig struct {
@@ -188,6 +197,26 @@ func (c Config) Normalized(base string) (Config, error) {
 	}
 	if !slices.Contains([]string{"error", "warn", "info", "debug"}, c.LogLevel) {
 		return c, errors.New("log_level must be error, warn, info or debug")
+	}
+	if c.LocalTUN != nil {
+		local := *c.LocalTUN
+		if !deviceLabel.MatchString(local.Namespace) || !strings.HasPrefix(local.Namespace, "letsolo-") {
+			return c, errors.New("local_tun.namespace must name an existing letsolo- namespace, not a path")
+		}
+		if local.InterfaceName == "" {
+			local.InterfaceName = "tr-tun"
+		}
+		if !deviceLabel.MatchString(local.InterfaceName) || len(local.InterfaceName) > 15 ||
+			local.InterfaceName == "lo" {
+			return c, errors.New("local_tun.interface_name must be a Linux interface label other than lo")
+		}
+		prefix, err := netip.ParsePrefix(local.ManagementSubnet)
+		if err != nil || !prefix.Addr().Is4() || !prefix.Addr().IsLinkLocalUnicast() ||
+			prefix.Bits() != 30 || prefix != prefix.Masked() {
+			return c, errors.New("local_tun.management_subnet must be the namespace's canonical link-local IPv4 /30")
+		}
+		local.ManagementSubnet = prefix.String()
+		c.LocalTUN = &local
 	}
 	return c, nil
 }

@@ -30,8 +30,12 @@ func compile(config Config, loginOnly bool) (Compiled, error) {
 		return Compiled{}, err
 	}
 	proxy := netip.MustParseAddrPort(config.Proxy.Server)
+	allowedInbounds := []string{"tailnet"}
+	if config.LocalTUN != nil && !loginOnly {
+		allowedInbounds = append(allowedInbounds, "local-tun")
+	}
 	rules := []object{
-		{"inbound": "tailnet", "invert": true, "action": "reject"},
+		{"inbound": allowedInbounds, "invert": true, "action": "reject"},
 		{"network": "icmp", "action": "reject", "method": "drop"},
 		{"network": []string{"tcp", "udp"}, "port": 53, "action": "hijack-dns"},
 		{"ip_is_private": true, "action": "reject"},
@@ -45,7 +49,7 @@ func compile(config Config, loginOnly bool) (Compiled, error) {
 	if !config.Proxy.UDP {
 		rules = append(rules, object{"network": "udp", "action": "reject"})
 	}
-	dnsRules := []object{{"inbound": "tailnet", "action": "route", "server": "exit"}}
+	dnsRules := []object{{"inbound": allowedInbounds, "action": "route", "server": "exit"}}
 	if loginOnly {
 		// A login command cannot serve client traffic or peer DNS, even if
 		// a previous run's routes remain approved in the control plane.
@@ -92,6 +96,21 @@ func compile(config Config, loginOnly bool) (Compiled, error) {
 		"experimental": object{"cache_file": object{
 			"enabled": true, "path": filepath.Join(config.StateDir, "cache.db"),
 		}},
+	}
+	if config.LocalTUN != nil && !loginOnly {
+		native["inbounds"] = []object{{
+			"type": "tun", "tag": "local-tun",
+			"interface_name": config.LocalTUN.InterfaceName,
+			"netns":          config.LocalTUN.Namespace,
+			"address":        []string{"172.29.0.1/30", "fdfe:29::1/126"},
+			// The namespace's resolv.conf is deployment-owned. Do not change
+			// host DNS or depend on systemd-resolved.
+			"dns_mode": "disabled", "stack": "gvisor", "mtu": 1500,
+			"auto_route": true, "strict_route": true,
+			"route_exclude_address": []string{
+				config.LocalTUN.ManagementSubnet, "127.0.0.0/8", "::1/128",
+			},
+		}}
 	}
 	wire, err := json.MarshalIndent(native, "", "  ")
 	return Compiled{JSON: wire}, err

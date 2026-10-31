@@ -36,6 +36,10 @@ func startTestEngine(t *testing.T, config Config, certificate []byte, loginOnly 
 }
 
 func startTestEngineWithGate(t *testing.T, config Config, certificate []byte, loginOnly bool, gate *forwardingGate) *box.Box {
+	return startTestEngineMode(t, config, certificate, loginOnly, gate, false)
+}
+
+func startTestEngineMode(t *testing.T, config Config, certificate []byte, loginOnly bool, gate *forwardingGate, kernelTUN bool) *box.Box {
 	t.Helper()
 	// Real instances cannot share a state/cache directory concurrently.
 	config.StateDir = filepath.Join(t.TempDir(), "state")
@@ -55,6 +59,11 @@ func startTestEngineWithGate(t *testing.T, config Config, certificate []byte, lo
 		t.Fatal(err)
 	}
 	delete(native, "endpoints")
+	// Router tests inject traffic at the TUN boundary without opening a kernel
+	// interface. The privileged namespace acceptance exercises the real device.
+	if !kernelTUN {
+		delete(native, "inbounds")
+	}
 	if certificate != nil {
 		exit := native["dns"].(map[string]any)["servers"].([]any)[1].(map[string]any)
 		// Trust only the private fixture CA while retaining TLS validation.
