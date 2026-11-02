@@ -26,7 +26,7 @@
 
   document.querySelectorAll('[data-copy-target]').forEach((button) => {
     const command = document.getElementById(button.dataset.copyTarget);
-    const status = button.closest('.build-note')?.querySelector('[data-copy-status]');
+    const status = button.closest('.command-line')?.parentElement?.querySelector('[data-copy-status]');
     if (!command || !status) return;
     button.hidden = false;
     button.addEventListener('click', async () => {
@@ -34,7 +34,7 @@
         if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
         await navigator.clipboard.writeText(command.textContent.trim());
         button.textContent = 'Copied';
-        status.textContent = 'Build command copied.';
+        status.textContent = 'Command copied.';
       } catch {
         const selection = window.getSelection();
         if (selection) {

@@ -5,3 +5,4 @@
 /*.auth-key
 /*.env
 /*.local.yaml
+/.claude/launch.json

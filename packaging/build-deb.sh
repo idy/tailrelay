@@ -13,7 +13,8 @@ case "$arch" in
   *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 commit=$(git rev-parse HEAD)
-if [[ ! $commit =~ ^[0-9a-f]{40}$ ]] || [ "${GITHUB_SHA:-$commit}" != "$commit" ]; then
+expected_commit=${RELEASE_SOURCE_COMMIT:-${GITHUB_SHA:-$commit}}
+if [[ ! $commit =~ ^[0-9a-f]{40}$ ]] || [ "$expected_commit" != "$commit" ]; then
   echo 'Package source must match the full workflow commit' >&2
   exit 1
 fi
@@ -33,6 +34,12 @@ install -d "$root/DEBIAN" "$root/usr/bin" "$root/usr/lib/systemd/system" \
 install -m 0644 deploy/tailrelay@.service "$root/usr/lib/systemd/system/tailrelay@.service"
 install -m 0644 config.example.yaml "$root/usr/share/doc/tailrelay/examples/instance.yaml"
 install -m 0644 README.md "$root/usr/share/doc/tailrelay/README.md"
+notices=${THIRD_PARTY_NOTICES_FILE:-$stage/THIRD_PARTY_NOTICES.md}
+if [ -z "${THIRD_PARTY_NOTICES_FILE:-}" ]; then
+  "$python" -I -B packaging/licenses.py --os linux --arch "$arch" --output "$notices"
+fi
+install -m 0644 LICENSE "$root/usr/share/doc/tailrelay/copyright"
+install -m 0644 "$notices" "$root/usr/share/doc/tailrelay/THIRD_PARTY_NOTICES.md"
 install -m 0755 packaging/tailrelay-instance "$root/usr/sbin/tailrelay-instance"
 for script in postinst prerm postrm; do
   install -m 0755 "packaging/$script" "$root/DEBIAN/$script"

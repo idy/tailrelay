@@ -221,8 +221,8 @@ def publish(directory, repository, github=None):
     manifest = verify(directory, identity)
     github = github or GitHub(repository)
     metadata = github.api("")
-    if metadata.get("private") is not True or metadata.get("full_name", "").lower() != repository.lower():
-        raise ValueError("Snapshots must be published to the selected private GitHub repository")
+    if metadata.get("full_name", "").lower() != repository.lower():
+        raise ValueError("Snapshots must be published to the selected GitHub repository")
     tag, commit = manifest["tag"], manifest["commit"]
     hashes = {name: digest(directory / name) for name in ASSETS}
     marker = f"<!-- tailrelay-snapshot commit={commit} -->"

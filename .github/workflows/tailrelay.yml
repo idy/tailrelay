@@ -1,91 +1,58 @@
-name: TailRelay
+name: CI
 
 on:
-  pull_request:
-    paths-ignore:
-      - site/**
-      - .github/workflows/pages.yml
   push:
     branches: [main]
-    paths-ignore:
-      - site/**
-      - .github/workflows/pages.yml
+    paths-ignore: ['site/**', '.github/workflows/pages.yml']
+  pull_request:
+    paths-ignore: ['site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: tailrelay-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+        runner: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      GOMAXPROCS: '2'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12'
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.26.2'
           cache-dependency-path: go.sum
-      - name: Formatting
-        run: test -z "$(gofmt -l .)"
-      - name: Packaging and snapshot publication tests
-        run: make test-packaging
-      - name: Race, integration tests and example configuration
-        run: make test check
-      - name: Real Linux namespace TUN and shutdown isolation
-        if: runner.os == 'Linux'
-        run: |
-          go test -c -tags with_gvisor -o bin/tailrelay-netns-test .
-          sudo env TAILRELAY_PRIVILEGED_TEST=1 bin/tailrelay-netns-test -test.run '^TestLocalTUNNetworkNamespace$' -test.v
-      - name: Linux snapshot bundle
-        if: runner.os == 'Linux'
-        run: make snapshot
-      - name: Upload verified Linux snapshot
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: tailrelay-linux
-          path: bin/snapshot/
-          if-no-files-found: error
-          retention-days: 14
-
-  snapshot:
-    name: Publish commit-pinned snapshot
-    needs: test
-    if: >-
-      github.event_name != 'pull_request' &&
-      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: tailrelay-linux
-          path: bin/snapshot
-      - name: Verify source, private repository and snapshot assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SNAPSHOT_REPOSITORY: ${{ github.repository }}
+      - name: Formatting and installer syntax
         run: |
-          python3 -B packaging/snapshot.py publish \
-            --directory bin/snapshot \
-            --repository "$SNAPSHOT_REPOSITORY"
+          test -z "$(gofmt -l .)"
+          sh -n install.sh
+      - name: Race tests, vet and offline configuration check
+        run: make test check
+      - name: Installer execution tests
+        run: python3 -B -m unittest discover -s tests/installer
+      - name: Release and packaging tests
+        if: hashFiles('tests/packaging/test_*.py') != ''
+        run: python3 -B -m unittest discover -s tests/packaging
+      - name: Isolated Linux namespace lifecycle
+        if: runner.os == 'Linux' && hashFiles('local_tun_linux_test.go') != ''
+        run: |
+          go test -c -tags with_gvisor -o bin/tailrelay-netns-test .
+          sudo env TAILRELAY_PRIVILEGED_TEST=1 bin/tailrelay-netns-test -test.run '^TestLocalTUNNetworkNamespace$' -test.v
+      - name: Isolated TUN DNS coexistence
+        if: runner.os == 'Linux' && hashFiles('scripts/test-tun-dns.sh') != ''
+        run: sh scripts/test-tun-dns.sh

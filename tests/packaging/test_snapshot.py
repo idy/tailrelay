@@ -235,16 +235,22 @@ class SnapshotTests(unittest.TestCase):
             self.publish(github)
         self.assertEqual(github.writes, writes)
 
-    def test_public_or_wrong_repository_is_rejected_before_any_write(self):
+    def test_public_repository_can_publish(self):
         self.bundle()
-        for metadata in ({"private": False, "full_name": "idy/tailrelay"},
-                         {"private": True, "full_name": "idy/another-repo"}):
-            github = FakeGitHub()
-            github.metadata = metadata
-            with self.subTest(metadata=metadata), self.assertRaisesRegex(ValueError, "private GitHub"):
-                self.publish(github)
-            self.assertEqual(github.writes, [])
-            self.assertEqual(github.uploaded, [])
+        github = FakeGitHub()
+        github.metadata = {"private": False, "full_name": "idy/tailrelay"}
+        self.publish(github)
+        self.assertFalse(github.release["draft"])
+        self.assertEqual(set(github.files), snapshot.ASSETS)
+
+    def test_wrong_repository_is_rejected_before_any_write(self):
+        self.bundle()
+        github = FakeGitHub()
+        github.metadata = {"private": False, "full_name": "idy/another-repo"}
+        with self.assertRaisesRegex(ValueError, "selected GitHub repository"):
+            self.publish(github)
+        self.assertEqual(github.writes, [])
+        self.assertEqual(github.uploaded, [])
 
     def test_dirty_source_cannot_be_published(self):
         self.bundle()
