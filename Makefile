@@ -1,4 +1,5 @@
 GO ?= go
+PYTHON ?= python3
 OUT ?= bin
 VERSION ?= $(shell cat VERSION)
 COMMIT ?= $(shell git rev-parse HEAD)
@@ -23,10 +24,10 @@ linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOARM64=v8.0 $(GO) build -mod=readonly -tags $(TAGS) -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o "$(OUT)/tailrelay-linux-arm64" ./cmd/tailrelay
 
 snapshot:
-	python3 -B packaging/snapshot.py build --directory "$(OUT)/snapshot"
+	"$(PYTHON)" -B packaging/snapshot.py build --directory "$(OUT)/snapshot"
 
 deb:
-	bash ../.github/actions/server-apt/build-deb.sh tailrelay
+	GO="$(GO)" PYTHON="$(PYTHON)" bash packaging/build-deb.sh
 
 test-packaging:
-	python3 -B -m unittest discover -s tests/packaging -p 'test_*.py' -v
+	"$(PYTHON)" -B -m unittest discover -s tests/packaging -p 'test_*.py' -v

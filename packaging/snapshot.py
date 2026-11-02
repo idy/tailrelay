@@ -14,7 +14,6 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = ROOT.parent
 ARCHES = {"amd64": 62, "arm64": 183}
 BINARIES = {f"tailrelay-linux-{arch}": arch for arch in ARCHES}
 MANIFEST = "release-manifest.json"
@@ -23,7 +22,7 @@ ASSETS = set(BINARIES) | {MANIFEST, CHECKSUMS}
 TAG_PREFIX = "tailrelay-snapshot-"
 
 
-def run(*args, cwd=REPO, capture=True, **kwargs):
+def run(*args, cwd=ROOT, capture=True, **kwargs):
     return subprocess.run(list(map(str, args)), cwd=cwd, check=True, text=True,
                           capture_output=capture, **kwargs).stdout
 
@@ -43,8 +42,8 @@ def source(allow_dirty=False):
         raise ValueError("Snapshot source must be a full Git commit")
     if os.environ.get("GITHUB_SHA", commit) != commit:
         raise ValueError("Checkout differs from the workflow source commit")
-    dirty = bool(git("status", "--porcelain", "--untracked-files=normal",
-                     "--", "tailrelay", ".github/workflows/tailrelay.yml"))
+    # Runtime code, packaging and workflows all live at the standalone root.
+    dirty = bool(git("status", "--porcelain", "--untracked-files=normal"))
     if dirty and not allow_dirty:
         raise ValueError("Commit TailRelay changes first; --allow-dirty is only for local builds")
     base = (ROOT / "VERSION").read_text().strip()
@@ -141,7 +140,7 @@ class GitHub:
                               "Accept": "application/vnd.github+json",
                               "Content-Type": "application/json",
                               "X-GitHub-Api-Version": "2022-11-28",
-                              "User-Agent": "letsolo-tailrelay-snapshot",
+                              "User-Agent": "tailrelay-snapshot",
                           })
         try:
             with urlopen(request, timeout=60) as response:
@@ -218,6 +217,9 @@ def publish(directory, repository, github=None):
     identity = source()
     manifest = verify(directory, identity)
     github = github or GitHub(repository)
+    metadata = github.api("")
+    if metadata.get("private") is not True or metadata.get("full_name", "").lower() != repository.lower():
+        raise ValueError("Snapshots must be published to the selected private GitHub repository")
     tag, commit = manifest["tag"], manifest["commit"]
     hashes = {name: digest(directory / name) for name in ASSETS}
     marker = f"<!-- tailrelay-snapshot commit={commit} -->"

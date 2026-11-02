@@ -1,0 +1,197 @@
+name: TailRelay APT release
+
+on:
+  push:
+    # Site-only changes do not rebuild or publish the server package.
+    branches: [main]
+    paths-ignore:
+      - site/**
+      - .github/workflows/pages.yml
+  pull_request:
+    paths-ignore:
+      - site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      snapshot:
+        description: Build all architectures without inspecting or publishing APT.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tailrelay-apt-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Version and release checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - id: version
+        name: Validate committed VERSION
+        run: python3 -B packaging/apt-release.py version
+      - run: make test-packaging
+
+  inspect:
+    name: Check APT for missing architectures
+    needs: validate
+    if: >-
+      vars.APT_PUBLISH_ENABLED == 'true' && !inputs.snapshot &&
+      github.event_name != 'pull_request' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      missing: ${{ steps.packages.outputs.missing }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/509958437205/locations/global/workloadIdentityPools/builder/providers/github
+          service_account: builder@termitoc.iam.gserviceaccount.com
+          project_id: nautiloid-testing
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - id: packages
+        name: Inspect committed version without uploading
+        run: python3 -B packaging/apt-release.py check
+
+  build:
+    name: Debian package (${{ matrix.arch }})
+    needs: [validate, inspect]
+    # A disabled cloud gate must still build and test both native architectures.
+    if: >-
+      always() && !cancelled() && needs.validate.result == 'success' &&
+      (vars.APT_PUBLISH_ENABLED != 'true' || inputs.snapshot ||
+       github.event_name == 'pull_request' ||
+       github.ref != format('refs/heads/{0}', github.event.repository.default_branch) ||
+       (needs.inspect.result == 'success' && needs.inspect.outputs.missing == 'true'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.26.2'
+          cache-dependency-path: go.sum
+      - name: Formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Race tests, vet and offline configuration validation
+        run: make test check
+      - name: Build Debian package and checksum
+        env:
+          GOARCH: ${{ matrix.arch }}
+        run: make deb
+      - name: Package lifecycle and retained identities
+        env:
+          DEB_ARCH: ${{ matrix.arch }}
+        run: sudo bash tests/packaging/install.sh "bin/deb/$DEB_ARCH"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: tailrelay-deb-${{ matrix.arch }}
+          path: bin/deb/${{ matrix.arch }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish and verify APT packages
+    needs: [inspect, build]
+    if: >-
+      !cancelled() && vars.APT_PUBLISH_ENABLED == 'true' &&
+      needs.build.result == 'success' && needs.inspect.result == 'success' &&
+      needs.inspect.outputs.missing == 'true' &&
+      !inputs.snapshot && github.event_name != 'pull_request' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: tailrelay-deb-*
+          path: bin/deb
+      - name: Verify artifacts
+        run: |
+          for directory in bin/deb/tailrelay-deb-*; do
+            (cd "$directory" && sha256sum --check SHA256SUMS)
+          done
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/509958437205/locations/global/workloadIdentityPools/builder/providers/github
+          service_account: builder@termitoc.iam.gserviceaccount.com
+          project_id: nautiloid-testing
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Publish missing packages and verify public downloads
+        run: python3 -B packaging/apt-release.py publish
+
+  summary:
+    name: Release summary
+    needs: [validate, inspect, build, publish]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Report package version and publication result
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_EVENT: ${{ github.event_name }}
+          APT_ENABLED: ${{ vars.APT_PUBLISH_ENABLED }}
+          SNAPSHOT_ONLY: ${{ inputs.snapshot }}
+          INSPECT_RESULT: ${{ needs.inspect.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          MISSING: ${{ needs.inspect.outputs.missing }}
+        run: |
+          {
+            printf '### TailRelay APT\n\n'
+            printf 'Version: %s\n\n' "${RELEASE_VERSION:-unavailable}"
+            printf 'Architectures: amd64, arm64\n\n'
+            printf 'Repository: nautiloid-testing / us-west2 / ppa\n\n'
+            if [ "$RELEASE_EVENT" = pull_request ] || [ "$SNAPSHOT_ONLY" = true ]; then
+              printf 'Build and lifecycle validation only; no APT inspection or publication.\n\n'
+            elif [ "$APT_ENABLED" != true ]; then
+              printf 'APT_PUBLISH_ENABLED is not true: builds and lifecycle tests run without GCP OIDC, inspection or publication.\n\n'
+            elif [ "$PUBLISH_RESULT" = success ]; then
+              printf 'Published packages and verified the public APT downloads.\n\n'
+            elif [ "$INSPECT_RESULT" = success ] && [ "$MISSING" = false ]; then
+              printf 'Both architectures already exist and their public downloads were verified; no upload was needed.\n\n'
+            else
+              printf 'No completed publication; inspect the job results below.\n\n'
+            fi
+            printf '| Stage | Result |\n| --- | --- |\n'
+            printf '| Inspect APT | %s |\n' "$INSPECT_RESULT"
+            printf '| Build and test | %s |\n' "$BUILD_RESULT"
+            printf '| Publish | %s |\n' "$PUBLISH_RESULT"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -32,8 +32,11 @@ class FakeGitHub:
         self.uploaded = []
         self.writes = []
         self.fail_upload_after = None
+        self.metadata = {"private": True, "full_name": "idy/tunrelay"}
 
     def api(self, path, method="GET", data=None, missing_ok=False):
+        if path == "":
+            return copy.deepcopy(self.metadata)
         if method != "GET":
             self.writes.append((path, method))
         if path.startswith("git/ref/tags/"):
@@ -98,7 +101,7 @@ class SnapshotTests(unittest.TestCase):
         return snapshot.assemble(self.directory, IDENTITY)
 
     def publish(self, github):
-        return snapshot.publish(self.directory, "idy/letsolo", github)
+        return snapshot.publish(self.directory, "idy/tunrelay", github)
 
     def test_exact_inventory_and_deterministic_manifest(self):
         self.bundle()
@@ -164,11 +167,11 @@ class SnapshotTests(unittest.TestCase):
 
     def test_draft_download_uses_asset_ids_without_looking_up_a_tag(self):
         with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
-            github = snapshot.GitHub("idy/letsolo")
+            github = snapshot.GitHub("idy/tunrelay")
         directory = self.directory / "download"
         directory.mkdir()
         def download(args, **kwargs):
-            self.assertIn("repos/idy/letsolo/releases/assets/42", args)
+            self.assertIn("repos/idy/tunrelay/releases/assets/42", args)
             kwargs["stdout"].write(b"downloaded bytes")
         with patch.object(snapshot.subprocess, "run", side_effect=download):
             github.download({"assets": [{"id": 42, "name": "tailrelay-linux-amd64"}]}, directory)
@@ -231,21 +234,83 @@ class SnapshotTests(unittest.TestCase):
             self.publish(github)
         self.assertEqual(github.writes, writes)
 
+    def test_public_or_wrong_repository_is_rejected_before_any_write(self):
+        self.bundle()
+        for metadata in ({"private": False, "full_name": "idy/tunrelay"},
+                         {"private": True, "full_name": "idy/another-repo"}):
+            github = FakeGitHub()
+            github.metadata = metadata
+            with self.subTest(metadata=metadata), self.assertRaisesRegex(ValueError, "private GitHub"):
+                self.publish(github)
+            self.assertEqual(github.writes, [])
+            self.assertEqual(github.uploaded, [])
+
     def test_dirty_source_cannot_be_published(self):
         self.bundle()
         self.identity.stop()
         with patch.dict(os.environ, {"GITHUB_SHA": COMMIT}), \
-                patch.object(snapshot, "git", side_effect=[COMMIT, " M tailrelay/config.go"]):
+                patch.object(snapshot, "git", side_effect=[COMMIT, " M config.go"]):
             with self.assertRaisesRegex(ValueError, "Commit TailRelay"):
                 self.publish(FakeGitHub())
 
     def test_authentication_failure_is_not_treated_as_missing_release(self):
         with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
-            github = snapshot.GitHub("idy/letsolo")
+            github = snapshot.GitHub("idy/tunrelay")
         with patch.object(snapshot, "urlopen", side_effect=HTTPError(
                 "https://api.github.com/test", 403, "Forbidden", {}, None)):
             with self.assertRaisesRegex(ValueError, "HTTP 403"):
                 github.api("releases/tags/test", missing_ok=True)
+
+
+class SnapshotSourceTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "VERSION").write_text("0.1.2\n")
+        root = patch.object(snapshot, "ROOT", self.root)
+        root.start()
+        self.addCleanup(root.stop)
+        environment = patch.dict(os.environ, {"GITHUB_SHA": COMMIT})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_git_commands_run_from_standalone_root(self):
+        with patch.object(snapshot.subprocess, "run") as run:
+            snapshot.git("rev-parse", "HEAD")
+        self.assertEqual(run.call_args.kwargs["cwd"], ROOT)
+
+    def test_source_commit_and_version_are_root_relative(self):
+        with patch.object(snapshot, "git", side_effect=[COMMIT, ""]) as git:
+            self.assertEqual(snapshot.source(), IDENTITY)
+        self.assertEqual(git.call_args_list[1].args,
+                         ("status", "--porcelain", "--untracked-files=normal"))
+
+    def test_root_runtime_packaging_and_workflow_changes_are_dirty(self):
+        for filename in ("config.go", "Makefile", "packaging/build-deb.sh",
+                         ".github/workflows/tailrelay-apt.yml"):
+            with self.subTest(filename=filename), \
+                    patch.object(snapshot, "git", side_effect=[COMMIT, " M " + filename]):
+                with self.assertRaisesRegex(ValueError, "Commit TailRelay"):
+                    snapshot.source()
+
+    def test_local_dirty_build_is_explicitly_marked(self):
+        with patch.object(snapshot, "git", side_effect=[COMMIT, "?? local.go"]):
+            self.assertEqual(snapshot.source(allow_dirty=True), dict(IDENTITY, dirty=True))
+
+    def test_workflow_commit_must_match_checkout(self):
+        with patch.object(snapshot, "git", return_value="a" * 40):
+            with self.assertRaisesRegex(ValueError, "workflow source commit"):
+                snapshot.source()
+
+    def test_source_requires_full_commit_and_plain_release_version(self):
+        with patch.object(snapshot, "git", return_value=COMMIT[:12]):
+            with self.assertRaisesRegex(ValueError, "full Git commit"):
+                snapshot.source()
+        (self.root / "VERSION").write_text("0.1.2+local\n")
+        with patch.object(snapshot, "git", side_effect=[COMMIT, ""]):
+            with self.assertRaisesRegex(ValueError, "major.minor.patch"):
+                snapshot.source()
 
 
 if __name__ == "__main__":

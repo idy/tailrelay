@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"letsolo/tailrelay"
+	"github.com/idy/tunrelay"
 )
 
 var (

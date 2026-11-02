@@ -4,7 +4,9 @@ set -euo pipefail
 test "$(id -u)" = 0
 directory=$(realpath "${1:?usage: install.sh package-directory}")
 version=$(cat "$(dirname "$0")/../../VERSION")
+commit=$(git -C "$(dirname "$0")/../.." rev-parse HEAD)
 arch=$(dpkg --print-architecture)
+(cd "$directory" && sha256sum --check SHA256SUMS)
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 test ! -e /usr/bin/tailrelay
@@ -17,7 +19,17 @@ dpkg-deb --raw-extract "$deb" "$stage/package"
 test ! -e "$stage/package/etc/tailrelay"
 test ! -e "$stage/package/var/lib/tailrelay"
 test -f "$stage/package/usr/lib/systemd/system/tailrelay@.service"
-env -i PATH=/usr/bin:/bin "$stage/package/usr/bin/tailrelay" version | grep -F "tailrelay $version "
+python3 -B - "$stage/package/usr/share/doc/tailrelay/build.json" "$version" "$arch" "$commit" <<'PYTHON'
+import json
+import sys
+from pathlib import Path
+
+path, version, arch, commit = sys.argv[1:]
+metadata = json.loads(Path(path).read_text())
+assert metadata == {"version": version, "architecture": arch, "commit": commit}, metadata
+PYTHON
+env -i PATH=/usr/bin:/bin "$stage/package/usr/bin/tailrelay" version |
+    grep -F "tailrelay $version " | grep -F "commit=$commit"
 dpkg --compare-versions "$version~upgradetest" lt "$version"
 sed -i "s/^Version: .*/Version: $version~upgradetest/" "$stage/package/DEBIAN/control"
 dpkg-deb --build --root-owner-group "$stage/package" "$stage/old.deb"

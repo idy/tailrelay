@@ -1,6 +1,6 @@
-module letsolo/tailrelay
+module github.com/idy/tunrelay
 
-go 1.26.0
+go 1.26.2
 
 require (
 	github.com/miekg/dns v1.1.72

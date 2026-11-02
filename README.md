@@ -1,357 +1,340 @@
 # TailRelay
 
-一个进程对应一个 **Tailscale 设备 + ISP SOCKS5 出口**。在同一台 BWG
-主机启动多个实例后，客户端可以选择不同的 Exit Node：
+TailRelay runs one independent Tailscale Exit Node per authenticated ISP SOCKS5
+proxy. Multiple instances on one Linux host can offer separate exits, each with
+its own hostname, credentials and persistent device identity.
 
-```text
-                         BWG（同一台主机）
-客户端 ── Tailscale ──┬─ tailrelay-isp-sf       ── SOCKS5 ── ISP A
-                     └─ tailrelay-isp-seattle  ── SOCKS5 ── ISP B
-```
+Project site: [tailrelay.idy.dev](https://tailrelay.idy.dev) (planned).
+Source, CI and authenticated release downloads live in the private
+[idy/tunrelay](https://github.com/idy/tunrelay) repository. The Go module is
+`github.com/idy/tunrelay`; the command, Debian package, service accounts and
+systemd units keep the `tailrelay` name.
 
-每个实例使用独立的 hostname、状态目录和代理凭据。重启、升级二进制保留
-磁盘上的设备身份；身份过期或撤销仍需要重新认证。不要删除状态目录或把同一份
-设备身份复制给同时运行的实例。系统重装需要单独备份、恢复状态目录并恢复
-对应服务用户的文件属主。
+TailRelay embeds sing-box 1.14.4 and userspace Tailscale. Its default mode needs
+no host `tailscaled`, kernel TUN or network capabilities and does not change the
+host's default route, DNS, IP forwarding or firewall. An optional `local_tun`
+mode supplies transparent egress inside an existing, isolated Linux network
+namespace.
 
-TailRelay 内嵌 sing-box 1.14.4 和用户态 Tailscale，不依赖主机的
-`tailscaled`，默认不创建内核 TUN，不修改主机默认路由、系统 DNS、IP forwarding、
-iptables 或其他 VPN 服务。默认服务可以使用普通用户运行。0.1.2 增加显式的
-`local_tun` 选项，将一个 TUN 放进已存在的独立 namespace，供本机应用透明出网。
+## Forwarding behavior
 
-## 本机 namespace 的透明出网
+- Client forwarding starts blocked. TailRelay checks the saved or newly enrolled
+  Tailscale identity, device expiry and optional `expected_tailnet` before
+  allowing ISP connections. Losing authorization closes existing TCP, UDP and
+  DoH connections and blocks new ones.
+- The configured ISP proxy is the only client egress. Proxy connection,
+  authentication or destination failures do not fall back to the host network
+  or another ISP. SOCKS5 username/password authentication is required; anonymous
+  authentication downgrades are rejected.
+- TCP/UDP port 53 queries and Tailscale peer DNS use certificate-verified DoH
+  through that same ISP. There is no local DNS fallback.
+- Ordinary UDP is disabled by default, including QUIC, STUN, game and voice
+  traffic. Enable `proxy.udp` only after confirming SOCKS5 UDP ASSOCIATE support.
+  The UDP relay IP must equal the configured proxy IP. ICMP forwarding is denied.
+- Both IPv4 and IPv6 Exit Node routes are advertised. IPv6 destinations still
+  require upstream SOCKS5 IPv6 support. This service does not support every IP
+  protocol or provide subnet routing.
+- Client access to loopback, private, link-local, cloud metadata, Tailnet,
+  multicast and FakeIP addresses is denied. DNS interception happens before
+  these destination checks.
 
-现有 TailRelay 实例可同时服务 Tailnet 客户端和一个本地 namespace：
+These restrictions apply to client forwarding. Tailscale control connections,
+WireGuard, DERP/STUN and the system DNS needed to reach control services use the
+host network. Client-selected LAN bypass routes and DNS channels outside the
+Exit Node remain outside TailRelay's control.
 
-```yaml
-local_tun:
-  namespace: letsolo-claude-3
-  interface_name: tr-tun
-  management_subnet: 169.254.197.0/30
-```
+## Build and offline validation
 
-namespace 必须由部署层预先创建，并先装好独立的默认 DROP 防火墙。TailRelay
-仅在指定 namespace 内创建 TUN 和路由；自己的 Tailscale 控制连接、ISP TCP
-连接和设备状态目录保持原样。本地 TUN 与 Tailnet 转发共用同一个 ISP、DoH、
-协议限制和认证闸门，认证失效时两者都被阻断。交互式 `login` 不创建本地 TUN。
-
-此模式需要显式授予 `CAP_SYS_ADMIN`（进入已有 network namespace）、
-`CAP_NET_ADMIN` 和 `/dev/net/tun` 访问权限。默认安装的无能力 systemd 服务
-不会自动获得这些权限。Magpie 的 Terraform 部署用按实例的 drop-in 授予权限，
-并管理 namespace 里的防火墙、DNS、管理网段排除和 Magpie 代理变量清除。
-普通 Magpie 用户不获得这些权限。
-
-namespace DNS 使用 `172.29.0.2`，由 TUN 截获后经该实例的 ISP 请求 DoH；
-部署层管理该 namespace 的 `resolv.conf`，TailRelay 不写宿主机的 DNS。
-停止 TailRelay 或删除 TUN 不会卸载部署层的 DROP 规则。本地应用不用设置
-HTTP/SOCKS 代理；UDP 和 ICMP 仍遵守下文的转发限制。
-
-## 转发策略
-
-* 每次启动都先禁止客户端转发，确认已登录、设备未过期且
-  `expected_tailnet`（配置时）匹配后才开放 ISP 连接。认证失效或 Tailnet
-  不匹配会阻断新连接，并关闭已有 TCP、UDP 和 DoH 连接。加载保留身份不会
-  跳过这个检查。
-* 只有一个客户端流量出口：配置的 ISP SOCKS5 地址。代理连接、认证或目标连接
-  失败时返回失败，没有 BWG 直连或另一个 ISP 的回退。
-* SOCKS5 必须使用用户名/密码认证，拒绝服务端降级为匿名认证。
-* TCP/UDP 53 的 DNS 查询被截获，通过同一个 ISP 发送至经过 TLS 验证的 DoH
-  上游；访问 Exit Node 的 Tailscale peer DNS 也使用这一上游。没有本地 DNS 回退。
-* 普通 UDP 默认拒绝，包括 QUIC、STUN、游戏和语音 UDP。使用 TCP 的应用可以
-  正常转发；浏览器通常会回退到 TCP。**这不是支持所有 IP 协议的完整 VPN 出口。**
-* 只有确认 ISP 支持 SOCKS5 UDP ASSOCIATE 后才能开启 `proxy.udp`。UDP 中继的
-  IP 必须等于配置的代理 IP；不支持把 UDP 重定向到另一个 IP 的供应商。
-* ICMP 转发被拒绝，不能用外网 `ping` 成败判断 HTTP 出口健康。
-* 会发布 IPv4 和 IPv6 的 Exit Node 路由；实际 IPv6 目标需要 ISP 的 SOCKS5
-  服务支持 IPv6。上游拒绝时返回失败，不回退宿主出口。
-* 拒绝客户端访问 loopback、私网、link-local、云元数据、Tailnet 地址、
-  多播和 FakeIP 等特殊地址。DNS 53 先截获，因此客户端原来配置的私网 DNS
-  地址不会导致 DNS 请求进入 BWG 内网。此服务不提供 subnet routing。
-
-这里的 fail-closed 约束针对**客户端转发流量**。Tailscale 的控制连接、
-WireGuard、DERP/STUN 和用于连接控制服务的系统 DNS 仍使用 BWG 的宿主网络。
-不要把它理解为禁止这个进程的全部宿主网络连接。
-
-## 构建和离线检查
-
-需要 Go 1.26.2，Linux amd64 对应 BWG：
+Use Go 1.26.2. Python 3.11 or newer is needed for packaging and snapshot tooling;
+CI uses Python 3.12. Debian package builds additionally need `dpkg-deb` and
+`sha256sum`. Run commands from this repository's root:
 
 ```sh
-cd tailrelay
+make test-packaging
 make test check linux
 ```
 
-产物：
-
-```text
-bin/tailrelay
-bin/tailrelay-linux-amd64
-bin/tailrelay-linux-arm64
-```
-
-`with_gvisor` 构建标签是必需的，Makefile 已配置。
-
-### CI snapshot 下载
-
-`.github/workflows/tailrelay.yml` 在 PR 上测试、构建并上传 Actions artifact；
-默认分支 push 或在默认分支手动运行时，Linux/macOS 测试及 Linux namespace
-TUN 验证全部通过后，会创建 GitHub snapshot prerelease。发布标签为
-`tailrelay-snapshot-<完整的源码 commit>`，不会覆盖同 commit 的已发布文件，
-也不会占用仓库正式 release 的 Latest。
-
-每份 snapshot 固定包含四个文件：
-
-- `tailrelay-linux-amd64`
-- `tailrelay-linux-arm64`
-- `release-manifest.json`：源码 commit、snapshot 版本、架构、文件大小及 SHA256。
-- `SHA256SUMS`：两种 binary 和清单的校验值。
-
-binary 的 `tailrelay version` 同时包含 `VERSION+snapshot.<12 位 commit>`
-和完整 commit。发布先创建 draft，下载并验证远端文件后才公开为 prerelease；
-失败重跑只补传缺失文件，已有文件内容不符时直接报错。
-Actions artifact 保留 14 天；已发布 snapshot 通过 GitHub Releases 下载。
-
-```sh
-SNAPSHOT_COMMIT='填入完整的源码 commit'
-gh release download "tailrelay-snapshot-$SNAPSHOT_COMMIT" \
-  --repo idy/letsolo --dir tailrelay-snapshot
-(cd tailrelay-snapshot && shasum -a 256 --check SHA256SUMS)
-```
-
-部署应记录选定的 commit 和校验值，再把已验证的 binary 作为 `hosted_file`
-输入。snapshot 发布本身不会执行 Terraform apply 或重启服务；现有部署准备
-脚本仍使用本地构建路径，尚未自动下载 snapshot。
-本地可在干净 checkout 执行 `make snapshot`；未提交代码的本地验证可执行
-`python3 -B packaging/snapshot.py build --allow-dirty --directory bin/local-snapshot`，
-但这种产物不能发布。
-
-Debian/APT 包使用项目共享的 server-apt 构建和发布流程，版本由 `VERSION`
-管理，支持 amd64 和 arm64：
-
-```sh
-GOARCH=amd64 make deb
-GOARCH=arm64 make deb
-```
-
-产物在 `bin/deb/<arch>/tailrelay_<version>_<arch>.deb`。首次安装不创建配置、
-不注册设备、不自动启动实例。升级只重启已经运行的实例；remove/purge 保留
-用户配置、代理凭据、服务用户和设备身份。APT CI 在默认分支发布尚不存在的版本，
-已发布的同版本包不覆盖。
-
-`.github/workflows/tailrelay-apt.yml` 负责自动发布：PR 在原生 amd64/arm64
-runner 上运行 race、配置检查及 Debian 包安装/升级/卸载测试，并保留 deb 和
-`SHA256SUMS` 产物 30 天。默认分支每次 push 或手动运行时检查 `VERSION`；
-仓库缺少该版本的架构时才构建并发布到共享 APT 源
-`nautiloid-testing / us-west2 / ppa`。发布使用现有 GCP OIDC 身份，不需要另存
-长期云密钥；PR 不获取发布权限。
-
-新版本发布时修改 `tailrelay/VERSION` 并通过 PR 合入默认分支。已有的完整版本
-只验证公开下载，不覆盖；部分发布重试要求已有包与本次构建字节一致，否则必须
-恢复原提交重试或提升版本号。Actions 的 Release summary 会区分
-“PR 验证”“已经存在”和“本次已发布”，避免把构建成功当成发布成功。
+The required `with_gvisor` build tag is set by the Makefile. Outputs are
+`bin/tailrelay`, `bin/tailrelay-linux-amd64` and
+`bin/tailrelay-linux-arm64`. The Linux binaries are static, with amd64/v1 and
+arm64/v8.0 baselines.
 
 ```sh
 bin/tailrelay check -c config.example.yaml
 bin/tailrelay render -c config.example.yaml
 ```
 
-`check` 和 `render` 不读凭据、不创建状态、不登录，也不改变主机网络。
-`render` 输出 TailRelay 内嵌核心配置，凭据为 `<runtime>` 占位符；
-其中受限的 `tailrelay-isp` outbound 是本项目注册的类型，不能直接交给普通
-`sing-box` 命令运行。
+`check` and `render` do not read credentials, create state, enroll a device or
+change networking. Rendered credentials use `<runtime>` placeholders. The
+`tailrelay-isp` outbound in the rendered configuration is registered by
+TailRelay and cannot be run by a stock `sing-box` command.
 
-## 每个 ISP 的配置
+Source tests use loopback fixtures. They cover two independent ISP exits,
+proxied TLS DoH, authorization gating and revocation, proxy failure, anonymous
+authentication rejection, explicit UDP support, private destination rejection,
+configuration permissions and state locks. Tests compiled with the
+`tailrelay_live` tag run offline probe tests; a live Tailnet acceptance run is a
+separate, explicitly configured operator action. The privileged namespace test
+runs only in disposable Linux CI runners with `TAILRELAY_PRIVILEGED_TEST=1`.
 
-将 `config.example.yaml` 复制为 `isp-sf.yaml`、`isp-seattle.yaml` 等文件。
-每个实例必须有不同的 `name` 和 `state_dir`，设备名称可以通过
-`tailscale.hostname` 自定义：
+## Commit-pinned snapshots
+
+[The TailRelay workflow](.github/workflows/tailrelay.yml) runs Linux and macOS
+checks, verifies the real Linux network namespace TUN lifecycle, and uploads an
+Actions artifact for 14 days. A successful push or manual run on the default
+branch can then create a private GitHub snapshot prerelease. Pull requests
+build and test without publishing. Snapshot publication rejects a public
+GitHub repository.
+
+Each `tailrelay-snapshot-<full-source-commit>` release contains exactly:
+
+- `tailrelay-linux-amd64`
+- `tailrelay-linux-arm64`
+- `release-manifest.json`, containing source commit, snapshot version, OS,
+  architecture, size and SHA256 for each executable
+- `SHA256SUMS`, covering both executables and the manifest
+
+`tailrelay version` includes `VERSION+snapshot.<12-character-commit>` and the
+full source commit. Publication creates a draft, verifies downloaded remote
+assets, then marks it as a prerelease without changing GitHub's Latest release.
+A retry uploads only missing draft assets. Conflicting assets or a moved tag
+cause a failure; published bytes are never overwritten.
+
+Authenticate `gh` with access to the private repository, then select a source
+commit and download its snapshot:
+
+```sh
+SNAPSHOT_COMMIT='replace-with-the-full-source-commit'
+gh release download "tailrelay-snapshot-$SNAPSHOT_COMMIT" \
+  --repo idy/tunrelay --dir bin/downloaded-snapshot
+(cd bin/downloaded-snapshot && shasum -a 256 --check SHA256SUMS)
+```
+
+Record the chosen commit and hashes in deployment inputs. Publishing a snapshot
+does not deploy or restart a service. A clean checkout can run `make snapshot`.
+For local validation of uncommitted work, use:
+
+```sh
+python3 -B packaging/snapshot.py build --allow-dirty --directory bin/local-snapshot
+```
+
+A bundle marked dirty cannot be published. Snapshot source checks cover the
+whole standalone checkout, including root Go files, packaging and workflows.
+
+## Debian packages and APT enablement
+
+The self-contained builder and publisher live in `packaging/`:
+
+```sh
+GOARCH=amd64 make deb
+GOARCH=arm64 make deb
+```
+
+Packages and checksums appear in `bin/deb/<arch>/`. Each package embeds its
+version, architecture and full source commit in
+`/usr/share/doc/tailrelay/build.json` and its executable. Stable timestamps,
+root ownership and fixed compression preserve retry reproducibility. The only
+example YAML is under `/usr/share/doc/tailrelay/examples/`; no operator
+configuration, credentials or device identity is shipped.
+
+[The APT workflow](.github/workflows/tailrelay-apt.yml) validates `VERSION` and
+runs native amd64/arm64 race tests, configuration checks, and package
+install/upgrade/remove/purge tests. It retains Debian artifacts and
+`SHA256SUMS` for 30 days. Builds and lifecycle tests run even while APT
+publication is disabled.
+
+All GCP OIDC authentication, APT inventory checks and APT publication are gated
+by the repository variable **`APT_PUBLISH_ENABLED` being exactly `true`**.
+Leave it unset or false until the cloud Workload Identity Federation policy
+has explicitly trusted `idy/tunrelay` and its default branch, and an operator
+has reviewed the existing publisher service account and registry permissions.
+The workflow retains the existing OIDC provider, service account and APT target
+`nautiloid-testing / us-west2 / ppa`; extraction does not configure cloud trust
+or require a stored cloud key. Pull requests, non-default branches and reusable
+workflow calls with `snapshot: true` never inspect or publish APT.
+
+After that review, enabling the variable allows default-branch runs to inspect
+the committed `VERSION` and publish missing architectures. An already complete
+version is downloaded and verified without rebuilding or uploading. A partial
+retry must match existing package hashes before the first write; otherwise
+retry the original source commit or bump root-level `VERSION`. Do not reuse a
+published version for changed source. The APT channel exposes package downloads
+through the existing public registry; private source, operator configuration
+and device state are not uploaded. Workflow summaries distinguish build-only
+validation, existing verified releases and completed publication.
+
+## Configure an instance
+
+Copy `config.example.yaml` to an instance file such as `isp-a.yaml`. Every
+instance needs a distinct `name`, `state_dir` and Tailscale hostname:
 
 ```yaml
 version: 1
-name: isp-sf
-state_dir: /var/lib/tailrelay/isp-sf
+name: isp-a
+state_dir: /var/lib/tailrelay/isp-a
 tailscale:
-  hostname: bwg-isp-sf
+  hostname: tailrelay-isp-a
   auth_key_env: TAILRELAY_AUTH_KEY
   listen_port: 0
 proxy:
   server: 203.0.113.10:12324
-  credentials_file: /etc/tailrelay/isp-sf.credentials.json
+  credentials_file: /etc/tailrelay/isp-a.credentials.json
   udp: false
 dns:
   server: 1.1.1.1
   server_name: cloudflare-dns.com
 ```
 
-示例中的 `203.0.113.10` 是文档地址，必须改成实际 ISP 的 SOCKS5 IP。
-不接受代理域名，避免代理本身的 DNS 启动依赖。DNS 上游也使用固定 IP，
-TLS 的 `server_name` 用来验证证书和发送 SNI。修改 DNS IP 时同时选择与之
-对应的 `server_name`；默认是 Cloudflare DoH。
+Replace the documentation address `203.0.113.10` with the ISP's actual SOCKS5
+IP. Proxy hostnames are rejected to avoid a bootstrap DNS dependency. The DoH
+IP must match its TLS `server_name`; the default is Cloudflare DoH. Relative
+file paths resolve against the YAML directory.
 
-代理凭据保存在独立 JSON 文件里，权限必须为 `0600` 或 `0400`，不能是符号链接：
+Keep proxy credentials in a separate regular JSON file with mode `0600` or
+`0400`, owned by the invoking user:
 
 ```json
 {"username":"ISP_USERNAME","password":"ISP_PASSWORD"}
 ```
 
-程序拒绝不认识的 YAML 字段、重复键、多文档、内联密钥、错误的地址和不安全的
-状态文件权限。相对文件路径相对于 YAML 文件的目录解析。
-systemd 的 `LoadCredential` 是唯一例外：支持其私有只读挂载中 root 所有、
-通过 ACL 授权给服务用户的 `0400`/`0440` 凭据；普通文件和设备状态仍使用原来的
-属主及权限检查。`tailrelay check-credentials` 可单独验证凭据，不连接网络或创建状态。
+Unknown YAML fields, duplicate keys, multiple YAML documents, inline secrets,
+invalid addresses and unsafe state permissions are rejected. systemd
+`LoadCredential` is the explicit exception for root-owned `0400`/`0440`
+credentials provided through its private read-only mount and service-user ACL.
+`tailrelay check-credentials` validates credentials without connecting to the
+network or creating state.
 
-可选配置：
+Optional settings include `tailscale.auth_key_file` instead of
+`auth_key_env`, `tailscale.tags: [tag:tailrelay]`,
+`tailscale.expected_tailnet: example.com`, `proxy.connect_timeout: 10s` and
+`dns.port: 443` / `dns.path: /dns-query`. Omitting both auth-key settings uses
+the retained device identity. Tailnet tags require corresponding policy
+permission. Set `expected_tailnet` to the name reported by `tailrelay status`.
+`listen_port: 0` allocates a separate UDP port to each process; fixed ports must
+be unique and allowed by the host's existing firewall policy if direct
+Tailscale connections are needed.
 
-```yaml
-tailscale:
-  hostname: bwg-isp-sf
-  # 只能选 auth_key_env 或 auth_key_file 之一，都不配置时使用已保存的身份。
-  auth_key_file: /etc/tailrelay/isp-sf.auth-key
-  # 必须在 Tailnet 策略中允许该标签，或使用带该标签的设备 auth key。
-  tags: [tag:tailrelay]
-  # 登录后的 Tailnet 名称不匹配时终止进程；值以 status.tailnet 为准。
-  expected_tailnet: example.com
-  listen_port: 0
-proxy:
-  server: 203.0.113.10:12324
-  credentials_file: /etc/tailrelay/isp-sf.credentials.json
-  connect_timeout: 10s
-  udp: false
-dns:
-  server: 1.1.1.1
-  port: 443
-  server_name: cloudflare-dns.com
-  path: /dns-query
-```
+## Linux systemd instances
 
-`listen_port: 0` 为多个进程自动分配不同的 UDP 监听端口。需要固定端口时，
-每个实例设置不同的端口，并在云安全组/宿主防火墙中允许对应 UDP 入站以改善直连。
-无法直连时 Tailscale 可以使用 DERP，但延迟和吞吐取决于实际路径。
-
-## 在 Linux 上使用 systemd 多实例
-
-以下命令创建新服务，不更改已有的系统 Tailscale、LBV2 或 residential relay。
-需要支持 `LoadCredential` 的 systemd。每个实例创建独立的普通系统用户；
-建议使用简短实例名以符合 Linux 用户名长度限制。
-
-安装 Debian 包：
+Install the appropriate package on a host with systemd 247 or newer:
 
 ```sh
-sudo apt-get install ./bin/deb/amd64/tailrelay_0.1.1_amd64.deb
+VERSION=$(cat VERSION)
+sudo apt-get install "./bin/deb/amd64/tailrelay_${VERSION}_amd64.deb"
 ```
 
-包发布到项目共享 APT 源后，已配置该源的机器可以直接
-`sudo apt-get install tailrelay`。实例助手只准备服务用户和状态目录，不登录、
-不启动、不改配置文件。为第一个实例准备文件：
+Hosts already configured for the APT source can use `sudo apt-get install
+tailrelay` after that version is published. First installation starts no
+instances and enrolls no devices. The instance helper prepares a persistent
+unprivileged account and state directory without starting or logging in:
 
 ```sh
-sudo tailrelay-instance isp-sf
-sudo install -m 0644 isp-sf.yaml /etc/tailrelay/isp-sf.yaml
-sudo install -m 0600 isp-sf.credentials.json /etc/tailrelay/isp-sf.credentials.json
+sudo tailrelay-instance isp-a
+sudo install -m 0644 isp-a.yaml /etc/tailrelay/isp-a.yaml
+sudo install -m 0600 isp-a.credentials.json /etc/tailrelay/isp-a.credentials.json
 ```
 
-systemd 通过 `LoadCredential` 把 root 管理的代理密钥交给相应实例，不需要把
-密码写进 YAML、命令行或版本库。
+The unit is `tailrelay@isp-a.service`, the account is `tailrelay-isp-a` and the
+state directory is `/var/lib/tailrelay/isp-a`. The instance label must fit the
+helper's 22-character limit. systemd passes root-managed ISP credentials using
+`LoadCredential`.
 
-注册设备有两种方式：
+For server enrollment, create a non-ephemeral Tailscale device auth key for the
+intended Tailnet with the needed tags and approval settings. Store
+`TAILRELAY_AUTH_KEY=...` in `/etc/tailrelay/isp-a.env` using a secure editor and
+mode `0600`. It is a device auth key, not a Tailscale API access token. After
+successful enrollment, remove the bootstrap environment file and restart the
+instance to confirm that saved identity works.
 
-1. **服务器推荐：设备 auth key。** 在 Tailscale 后台生成正确 Tailnet 的
-   非 ephemeral device auth key，按需要配置标签和预批准；不是 API access token。
-   用安全编辑器创建 `/etc/tailrelay/isp-sf.env`，内容为
-   `TAILRELAY_AUTH_KEY=...`，权限 `0600`。启动后身份会保存到 `state_dir`；
-   登录成功后删除 bootstrap env 文件，并重启一次验证可使用保存的身份。
-2. **交互登录。** 不提供 auth key，先在真实终端中运行：
+Alternatively, omit the auth key, stop that instance's service, and enroll from
+an interactive terminal as its service user:
 
-   ```sh
-   sudo -u tailrelay-isp-sf /usr/bin/tailrelay login -c /etc/tailrelay/isp-sf.yaml
-   ```
+```sh
+sudo -u tailrelay-isp-a /usr/bin/tailrelay login -c /etc/tailrelay/isp-a.yaml
+```
 
-   打开终端显示的私有授权链接，选择正确 Tailnet。命令确认保存身份后退出。
-   `login` 不提供转发，不需要读取 ISP 凭据，也不会自动打开浏览器或把登录链接
-   写入状态文件。操作前先停止对应的 `tailrelay@isp-sf` 服务，避免状态锁冲突。
-
-然后启动服务：
+Open the private authorization URL shown in that terminal and select the
+correct Tailnet. `login` saves identity and exits without forwarding traffic,
+reading ISP credentials or creating a local TUN. It does not open a browser or
+save the login URL in status files.
 
 ```sh
 sudo systemctl daemon-reload
-sudo systemctl enable --now tailrelay@isp-sf
-sudo systemctl status tailrelay@isp-sf
-sudo journalctl -u tailrelay@isp-sf -n 50 --no-pager
+sudo systemctl enable --now tailrelay@isp-a
+sudo systemctl status tailrelay@isp-a
+sudo journalctl -u tailrelay@isp-a -n 50 --no-pager
 ```
 
-第二个 ISP 以相同步骤创建 `tailrelay-isp-seattle` 用户以及
-`isp-seattle.yaml` / `isp-seattle.credentials.json`，使用单独的状态目录：
+Repeat with a different label and state directory for another ISP. Services
+hold an exclusive state lock, so two processes cannot share one identity.
+Stopping or restarting an instance does not clear its login state.
+
+Approve the advertised IPv4/IPv6 Exit Node routes in the Tailscale admin
+console, or merge an appropriate `autoApprovers.exitNode` policy into the
+existing Tailnet policy. Clients also need permission to use the Internet
+exit. Select the matching hostname in a native Tailscale client or a compatible
+client such as TailSplit. Route advertisement, admin approval and client
+permission are separate checks.
+
+Read a saved status snapshot as the instance user:
 
 ```sh
-sudo systemctl enable --now tailrelay@isp-seattle
+sudo -u tailrelay-isp-a /usr/bin/tailrelay status -c /etc/tailrelay/isp-a.yaml
 ```
 
-每个服务只控制自己的进程和状态目录。`systemctl stop` / `restart` 不清除
-登录身份，程序用独占文件锁拒绝多个进程共享同一身份目录。
+Status updates every five seconds. Check `updated_at`, `phase` and the service
+process; a crash can leave a stale snapshot. `tailnet_connected` does not prove
+that the ISP works, routes are approved or the observed public IP is correct.
+Live acceptance should be performed separately on an authorized client using
+the chosen Exit Node, comparing its public IP with the intended ISP. External
+`ping` is unsuitable because ICMP forwarding is denied.
 
-## Exit Node 批准和选择
+## Optional local network namespace
 
-程序会发布 IPv4/IPv6 默认路由，但**发布不等于批准**。需要在 Tailscale
-管理后台批准对应设备作为 Exit Node，或由现有 Terraform 管理的策略使用
-`autoApprovers.exitNode` 自动批准。例如，合并进现有策略而不是覆盖整个策略：
+Existing instances can also serve transparent local traffic inside a
+pre-created namespace:
 
-```json
-{
-  "tagOwners": {
-    "tag:tailrelay": ["autogroup:admin"]
-  },
-  "autoApprovers": {
-    "exitNode": ["tag:tailrelay"]
-  }
-}
+```yaml
+local_tun:
+  namespace: letsolo-app-a
+  interface_name: tr-tun
+  management_subnet: 169.254.197.0/30
 ```
 
-客户端还需要现有 Tailnet 访问规则允许它使用互联网出口。不要为了测试直接
-覆盖线上 ACL。设备是否可见、路由是否批准和用户是否有访问权限是不同的检查项。
+The deployment layer must create that namespace and install its independent
+default-DROP firewall before TailRelay starts. The `letsolo-` namespace prefix
+remains required for compatibility; renaming this repository does not change
+namespace validation. TailRelay creates the TUN and routes only inside the
+specified namespace. Control connections, ISP sockets and persistent identity
+continue to use their existing host paths.
 
-批准后，在原生 Tailscale 客户端选择 `bwg-isp-sf` 或 `bwg-isp-seattle`。
-在 TailSplit 中也可以选择这些 Exit Node。客户端自行决定是否启用出口，
-服务不会强制修改所有客户端的出口选择。
+This mode explicitly requires `CAP_SYS_ADMIN` to enter the existing network
+namespace, `CAP_NET_ADMIN` and access to `/dev/net/tun`. The packaged default
+unit grants none of these; any instance-specific systemd override and firewall
+setup belong to deployment. Namespace DNS is `172.29.0.2`, intercepted by the
+TUN and sent through the ISP to DoH. Deployment manages the namespace's
+`resolv.conf`; TailRelay does not write host DNS. Local traffic uses the same
+proxy, DNS restrictions and authorization gate as Tailnet traffic. Stopping
+TailRelay removes its TUN but leaves deployment-owned DROP rules in place.
 
-DNS 策略仍由客户端决定：客户端发进隧道的 DNS 请求会被 TailRelay 截获，
-Tailscale 的 peer DNS 也经过 ISP；客户端显式保留在隧道之外的 LAN 流量或其他
-DNS 通道，不在本程序的控制范围内。
+## Upgrades, state preservation and extraction origin
 
-## 状态、验证和升级
+Back up `/etc/tailrelay/` and `/var/lib/tailrelay/<instance>` with their original
+ownership and permissions before moving a service. Preserve each instance's
+configuration, ISP credentials, state directory, hostname, service account and
+systemd overrides. Do not delete state or run concurrent copies of one device
+identity. A reinstall onto a different host needs the state restored under its
+corresponding service account. Expired or revoked identities still need fresh
+authorization.
 
-以对应服务用户读取状态：
+Package upgrades restart only already active instances; arrange a maintenance
+window. Remove and purge retain operator configuration, credentials, service
+accounts and identity. Binary replacement should preserve state and occur with
+the affected instance stopped. This extraction does not change deployed
+services, their accounts or paths.
 
-```sh
-sudo -u tailrelay-isp-sf /usr/bin/tailrelay status -c /etc/tailrelay/isp-sf.yaml
-```
-
-`status` 是磁盘快照，每五秒更新一次。核对 `updated_at`、`phase` 和服务进程；
-SIGKILL 或主机掉电可能留下旧快照。`tailnet_connected` 仅表示 Tailscale
-连接状态，不能证明 ISP 可用、Exit Node 已批准或实际公网 IP 正确。
-
-真实验收应在选择该 Exit Node 的客户端执行：
-
-```sh
-curl --max-time 15 https://api.ipify.org
-curl --max-time 15 -I https://www.google.com
-```
-
-核对 IP 是否与指定 ISP 一致，分别选择其他实例确认出口不同。需要验证断线保护时，
-在计划的维护窗口只阻断测试实例到其 ISP 的连接，并确认新建 HTTP 连接和未缓存的 DNS 请求
-失败且没有变成 BWG 公网 IP。停止整个 Exit Node 服务测试的是隧道中断，不等价于
-单独测试 ISP 故障。不要用共用 ISP 凭据或宿主级防火墙影响已有生产链路。
-
-升级二进制时保留 `/var/lib/tailrelay/<name>`：
-
-```sh
-sudo apt-get install ./bin/deb/amd64/tailrelay_0.1.1_amd64.deb
-```
-
-升级会重启当前运行的实例，安排好维护窗口。不要在运行时原地覆盖可执行文件。
-
-自动化测试包含配置/权限/状态锁验证、真实嵌入核心的两 ISP 分流、TCP/UDP DNS
-经代理的 TLS DoH、启动前鉴权和撤销时关闭已有连接、代理断线不直连、
-认证失败/匿名降级、UDP 显式启用和私网拒绝。显式 live 验收工具使用每次唯一的
-DNS 问题，避免断网测试命中健康运行时的缓存；匹配的 NXDOMAIN 也是成功的 DNS
-响应。它的目录操作限制在验收根目录内，并拒绝向外的路径和符号链接。
-测试全部使用 loopback fixtures，不能替代真实 Tailnet 批准及 BWG/ISP 的端到端验收。
+This repository preserves the Git subtree history of `tailrelay/` from
+[`idy/letsolo`](https://github.com/idy/letsolo/tree/524201acd2b92443f50e60854ef31a4659ddb6d1/tailrelay)
+at source commit `524201acd2b92443f50e60854ef31a4659ddb6d1`.
+Shared Debian/APT tooling and the two TailRelay workflows were adapted into
+this repository. Builds no longer require a sibling monorepo checkout.
