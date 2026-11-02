@@ -133,7 +133,10 @@ class GitHub:
             raise ValueError("GH_TOKEN is required for snapshot publication")
 
     def api(self, path, method="GET", data=None, missing_ok=False):
-        request = Request(f"https://api.github.com/repos/{self.repository}/{path}",
+        url = f"https://api.github.com/repos/{self.repository}"
+        if path:
+            url += "/" + path
+        request = Request(url,
                           data=None if data is None else json.dumps(data).encode(),
                           method=method, headers={
                               "Authorization": "Bearer " + self.token,

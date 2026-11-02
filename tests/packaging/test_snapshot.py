@@ -1,5 +1,6 @@
 import copy
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -252,6 +253,16 @@ class SnapshotTests(unittest.TestCase):
                 patch.object(snapshot, "git", side_effect=[COMMIT, " M config.go"]):
             with self.assertRaisesRegex(ValueError, "Commit TailRelay"):
                 self.publish(FakeGitHub())
+
+    def test_repository_metadata_and_nested_endpoints_use_canonical_urls(self):
+        with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
+            github = snapshot.GitHub("idy/tunrelay")
+        root = "https://api.github.com/repos/idy/tunrelay"
+        for path, expected in (("", root), ("releases?per_page=100", root + "/releases?per_page=100")):
+            with self.subTest(path=path):
+                with patch.object(snapshot, "urlopen", return_value=io.BytesIO(b"{}")) as opened:
+                    self.assertEqual(github.api(path), {})
+                self.assertEqual(opened.call_args.args[0].full_url, expected)
 
     def test_authentication_failure_is_not_treated_as_missing_release(self):
         with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
