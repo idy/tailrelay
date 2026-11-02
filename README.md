@@ -6,8 +6,8 @@ its own hostname, credentials and persistent device identity.
 
 Project site: [tailrelay.idy.dev](https://tailrelay.idy.dev) (planned).
 Source, CI and authenticated release downloads live in the private
-[idy/tunrelay](https://github.com/idy/tunrelay) repository. The Go module is
-`github.com/idy/tunrelay`; the command, Debian package, service accounts and
+[idy/tailrelay](https://github.com/idy/tailrelay) repository. The Go module is
+`github.com/idy/tailrelay`; the command, Debian package, service accounts and
 systemd units keep the `tailrelay` name.
 
 TailRelay embeds sing-box 1.14.4 and userspace Tailscale. Its default mode needs
@@ -106,7 +106,7 @@ commit and download its snapshot:
 ```sh
 SNAPSHOT_COMMIT='replace-with-the-full-source-commit'
 gh release download "tailrelay-snapshot-$SNAPSHOT_COMMIT" \
-  --repo idy/tunrelay --dir bin/downloaded-snapshot
+  --repo idy/tailrelay --dir bin/downloaded-snapshot
 (cd bin/downloaded-snapshot && shasum -a 256 --check SHA256SUMS)
 ```
 
@@ -146,7 +146,7 @@ publication is disabled.
 All GCP OIDC authentication, APT inventory checks and APT publication are gated
 by the repository variable **`APT_PUBLISH_ENABLED` being exactly `true`**.
 Leave it unset or false until the cloud Workload Identity Federation policy
-has explicitly trusted `idy/tunrelay` and its default branch, and an operator
+has explicitly trusted `idy/tailrelay` and its default branch, and an operator
 has reviewed the existing publisher service account and registry permissions.
 The workflow retains the existing OIDC provider, service account and APT target
 `nautiloid-testing / us-west2 / ppa`; extraction does not configure cloud trust

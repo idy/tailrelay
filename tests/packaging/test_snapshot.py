@@ -33,7 +33,7 @@ class FakeGitHub:
         self.uploaded = []
         self.writes = []
         self.fail_upload_after = None
-        self.metadata = {"private": True, "full_name": "idy/tunrelay"}
+        self.metadata = {"private": True, "full_name": "idy/tailrelay"}
 
     def api(self, path, method="GET", data=None, missing_ok=False):
         if path == "":
@@ -102,7 +102,7 @@ class SnapshotTests(unittest.TestCase):
         return snapshot.assemble(self.directory, IDENTITY)
 
     def publish(self, github):
-        return snapshot.publish(self.directory, "idy/tunrelay", github)
+        return snapshot.publish(self.directory, "idy/tailrelay", github)
 
     def test_exact_inventory_and_deterministic_manifest(self):
         self.bundle()
@@ -168,11 +168,11 @@ class SnapshotTests(unittest.TestCase):
 
     def test_draft_download_uses_asset_ids_without_looking_up_a_tag(self):
         with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
-            github = snapshot.GitHub("idy/tunrelay")
+            github = snapshot.GitHub("idy/tailrelay")
         directory = self.directory / "download"
         directory.mkdir()
         def download(args, **kwargs):
-            self.assertIn("repos/idy/tunrelay/releases/assets/42", args)
+            self.assertIn("repos/idy/tailrelay/releases/assets/42", args)
             kwargs["stdout"].write(b"downloaded bytes")
         with patch.object(snapshot.subprocess, "run", side_effect=download):
             github.download({"assets": [{"id": 42, "name": "tailrelay-linux-amd64"}]}, directory)
@@ -237,7 +237,7 @@ class SnapshotTests(unittest.TestCase):
 
     def test_public_or_wrong_repository_is_rejected_before_any_write(self):
         self.bundle()
-        for metadata in ({"private": False, "full_name": "idy/tunrelay"},
+        for metadata in ({"private": False, "full_name": "idy/tailrelay"},
                          {"private": True, "full_name": "idy/another-repo"}):
             github = FakeGitHub()
             github.metadata = metadata
@@ -256,8 +256,8 @@ class SnapshotTests(unittest.TestCase):
 
     def test_repository_metadata_and_nested_endpoints_use_canonical_urls(self):
         with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
-            github = snapshot.GitHub("idy/tunrelay")
-        root = "https://api.github.com/repos/idy/tunrelay"
+            github = snapshot.GitHub("idy/tailrelay")
+        root = "https://api.github.com/repos/idy/tailrelay"
         for path, expected in (("", root), ("releases?per_page=100", root + "/releases?per_page=100")):
             with self.subTest(path=path):
                 with patch.object(snapshot, "urlopen", return_value=io.BytesIO(b"{}")) as opened:
@@ -266,7 +266,7 @@ class SnapshotTests(unittest.TestCase):
 
     def test_authentication_failure_is_not_treated_as_missing_release(self):
         with patch.dict(os.environ, {"GH_TOKEN": "test-only-token"}):
-            github = snapshot.GitHub("idy/tunrelay")
+            github = snapshot.GitHub("idy/tailrelay")
         with patch.object(snapshot, "urlopen", side_effect=HTTPError(
                 "https://api.github.com/test", 403, "Forbidden", {}, None)):
             with self.assertRaisesRegex(ValueError, "HTTP 403"):

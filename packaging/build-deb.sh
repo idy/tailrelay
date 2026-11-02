@@ -47,7 +47,7 @@ Maintainer: Yan <nautiloid@idy.dev>
 Section: net
 Priority: optional
 Depends: ca-certificates, adduser, init-system-helpers, systemd (>= 247), iproute2, iptables, acl
-Homepage: https://github.com/idy/tunrelay
+Homepage: https://github.com/idy/tailrelay
 Description: Independent Tailscale Exit Nodes through required ISP SOCKS5 proxies
 CONTROL
 # Stable timestamps, ownership and compression allow retrying the same commit.

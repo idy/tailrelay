@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/idy/tunrelay"
+	"github.com/idy/tailrelay"
 )
 
 var (

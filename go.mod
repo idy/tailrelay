@@ -1,4 +1,4 @@
-module github.com/idy/tunrelay
+module github.com/idy/tailrelay
 
 go 1.26.2
 

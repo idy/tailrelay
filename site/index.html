@@ -25,7 +25,7 @@
     <nav aria-label="Main navigation">
       <a href="#routing">Routing</a>
       <a href="#get-started">Get started</a>
-      <a class="source-link" href="https://github.com/idy/tunrelay">Source <span class="access-label">(private)</span></a>
+      <a class="source-link" href="https://github.com/idy/tailrelay">Source <span class="access-label">(private)</span></a>
     </nav>
   </header>
 
@@ -36,7 +36,7 @@
         <p class="hero-description">Give a Tailscale exit node one explicit upstream. TailRelay carries client TCP and intercepted DNS through your authenticated SOCKS5 proxy.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#get-started">Set up a relay</a>
-          <a class="text-link" href="https://github.com/idy/tunrelay/blob/main/README.md">Read the docs <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+          <a class="text-link" href="https://github.com/idy/tailrelay/blob/main/README.md">Read the docs <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
         </div>
         <p class="hero-note">Built for Linux servers. Each instance has its own Tailscale identity.</p>
       </div>
@@ -115,18 +115,18 @@
         <div class="setup-intro">
           <h2 id="setup-title">Bring your<br>own upstream.</h2>
           <p>Start with a Linux host, a Tailnet you administer, and a SOCKS5 provider that requires a username and password.</p>
-          <a class="text-link" href="https://github.com/idy/tunrelay/blob/main/README.md">Open the setup guide <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+          <a class="text-link" href="https://github.com/idy/tailrelay/blob/main/README.md">Open the setup guide <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
           <p class="access-note">Source, documentation, and downloads are in a private GitHub repository. Repository access is required.</p>
         </div>
         <div class="setup-instructions">
           <ol class="setup-steps">
             <li>
               <h3>Get a build you can verify.</h3>
-              <p>Choose a Linux amd64 or arm64 build from <a href="https://github.com/idy/tunrelay/releases">TailRelay releases</a>. Check the release manifest and <code>SHA256SUMS</code> before installing.</p>
+              <p>Choose a Linux amd64 or arm64 build from <a href="https://github.com/idy/tailrelay/releases">TailRelay releases</a>. Check the release manifest and <code>SHA256SUMS</code> before installing.</p>
             </li>
             <li>
               <h3>Configure one instance.</h3>
-              <p>Use the <a href="https://github.com/idy/tunrelay/blob/main/config.example.yaml">example configuration</a> as a starting point. Set your upstream, keep credentials separate, and preserve the instance’s device state.</p>
+              <p>Use the <a href="https://github.com/idy/tailrelay/blob/main/config.example.yaml">example configuration</a> as a starting point. Set your upstream, keep credentials separate, and preserve the instance’s device state.</p>
             </li>
             <li>
               <h3>Authorize, approve, select.</h3>
@@ -135,7 +135,7 @@
           </ol>
           <div class="build-note">
             <h3>Prefer to build from source?</h3>
-            <p>With Go 1.26.2 or later, run this in your <code>tunrelay</code> checkout. The Makefile includes the required build tags.</p>
+            <p>With Go 1.26.2 or later, run this in your <code>tailrelay</code> checkout. The Makefile includes the required build tags.</p>
             <div class="command-line">
               <code id="relay-build-command">make test check linux</code>
               <button class="copy-button" type="button" data-copy-target="relay-build-command" aria-label="Copy TailRelay build command" hidden>Copy</button>
@@ -173,7 +173,7 @@
   <footer class="site-footer wrap">
     <a class="footer-brand" href="#">TailRelay</a>
     <p>An independent project built with Tailscale and sing-box.</p>
-    <a href="https://github.com/idy/tunrelay">GitHub <span class="access-label">(private)</span></a>
+    <a href="https://github.com/idy/tailrelay">GitHub <span class="access-label">(private)</span></a>
   </footer>
 </body>
 </html>
