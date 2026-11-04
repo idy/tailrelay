@@ -165,6 +165,24 @@ The optional development snapshot tooling in `packaging/snapshot.py` also
 supports public repositories. No private repository access is required to
 build the project or download releases.
 
+## Website preview
+
+The static project page lives in `site/`. Preview it with
+`python3 -m http.server 8080 --directory site`; no build or package installation
+is required. The Pages workflow also publishes the root installer as `/install.sh`.
+
+The page follows the browser's English/Chinese language preference and the
+system light/dark theme. Header controls override either choice and remember it
+for this site's origin. `site/shared/` contains the common idy.dev header/footer
+styles, preference and release helpers, and the self-hosted Manrope font/license;
+keep those shared files identical across the project websites.
+
+Downloads use GitHub's latest stable release, falling back to the newest published
+prerelease only when no stable release exists. Buttons use the actual release
+asset URLs; missing assets or API failures retain useful release-page links.
+The page remains readable in English without JavaScript. Run the dependency-free
+website checks with `node --test tests/website.test.cjs`.
+
 ## State and license
 
 Preserve each instance's configuration, account ownership, hostname and
