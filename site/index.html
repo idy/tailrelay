@@ -11,45 +11,47 @@
   <meta property="og:url" content="https://tailrelay.idy.dev/">
   <link rel="canonical" href="https://tailrelay.idy.dev/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <script src="shared/idy.js"></script>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="shared/idy.css">
   <script src="script.js" defer></script>
   <title>TailRelay — a SOCKS5 exit inside your Tailnet</title>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header wrap">
-    <a class="brand" href="#" aria-label="TailRelay home">
-      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M5 23h6a5 5 0 0 0 5-5v-4a5 5 0 0 1 5-5h6"/><circle cx="5" cy="23" r="3"/><circle cx="27" cy="9" r="3"/></svg>
-      <span>TailRelay</span>
-    </a>
-    <nav aria-label="Main navigation">
-      <a href="https://idy.dev/" aria-label="idy.dev home">idy.dev</a>
-      <a href="#routing">Routing</a>
-      <a href="#get-started">Install</a>
-      <a class="github-star" href="https://github.com/idy/tailrelay" aria-label="Star TailRelay on GitHub">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 2.47 5 5.53.8-4 3.9.94 5.5L10 14.6l-4.94 2.6.94-5.5-4-3.9L7.53 7Z"/></svg>
-        <span>GitHub Star</span>
-      </a>
-    </nav>
+  <a class="skip-link" href="#main" data-i18n="skipContent">Skip to content</a>
+  <header class="idy-header">
+    <div class="idy-header-inner">
+      <a class="idy-home" href="https://idy.dev/">idy.dev</a>
+      <a class="idy-project" href="#main">TailRelay</a>
+      <nav class="idy-nav" aria-label="Main navigation" data-i18n-aria-label="navigation">
+        <a href="#routing" data-i18n="relayNavRouting">Routing</a>
+        <a href="#get-started" data-i18n="relayNavInstall">Install</a>
+        <a href="https://github.com/idy/tailrelay">GitHub</a>
+      </nav>
+      <div class="idy-preferences">
+        <label><span data-i18n="language">Language</span><select data-idy-language><option value="auto" data-i18n="automatic">Auto</option><option value="en">English</option><option value="zh">中文</option></select></label>
+        <label><span data-i18n="theme">Theme</span><select data-idy-theme><option value="system" data-i18n="system">System</option><option value="light" data-i18n="light">Light</option><option value="dark" data-i18n="dark">Dark</option></select></label>
+      </div>
+    </div>
   </header>
 
   <main id="main">
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <h1 id="hero-title">A SOCKS5 exit.<br>Inside your Tailnet.</h1>
-        <p class="hero-description">Give a Tailscale exit node one explicit upstream. TailRelay carries client TCP and intercepted DNS through your authenticated SOCKS5 proxy.</p>
+        <h1 id="hero-title" data-i18n-html="relayHeroTitle">A SOCKS5 exit.<br>Inside your Tailnet.</h1>
+        <p class="hero-description" data-i18n="relayHeroDescription">Give a Tailscale exit node one explicit upstream. TailRelay carries client TCP and intercepted DNS through your authenticated SOCKS5 proxy.</p>
         <div class="hero-actions">
-          <a class="button button-primary" href="#get-started">Set up a relay</a>
-          <a class="text-link" href="https://github.com/idy/tailrelay/blob/main/README.md">Read the docs <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+          <a class="button button-primary" href="#get-started" data-i18n="relaySetUp">Set up a relay</a>
+          <a class="text-link" href="https://github.com/idy/tailrelay/blob/main/README.md"><span data-i18n="relayDocs">Read the docs</span> <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
         </div>
-        <p class="hero-note">Built for Linux servers. Each instance has its own Tailscale identity.</p>
+        <p class="hero-note" data-i18n="relayHeroNote">Built for Linux servers. Each instance has its own Tailscale identity.</p>
       </div>
 
       <figure class="route-concept" id="relay-concept" data-mode="tcp">
-        <figcaption><span class="concept-dot" aria-hidden="true"></span>Routing concept</figcaption>
+        <figcaption><span class="concept-dot" aria-hidden="true"></span><span data-i18n="relayConcept">Routing concept</span></figcaption>
         <svg class="relay-map" viewBox="0 0 560 330" role="img" aria-labelledby="relay-map-title relay-map-description">
-          <title id="relay-map-title">One instance, one upstream</title>
-          <desc id="relay-map-description">A Tailscale client connects to TailRelay, which forwards client traffic through an authenticated SOCKS5 proxy to the public internet. A failed proxy stops forwarding.</desc>
+          <title id="relay-map-title" data-i18n="relayMapTitle">One instance, one upstream</title>
+          <desc id="relay-map-description" data-i18n="relayMapDescription">A Tailscale client connects to TailRelay, which forwards client traffic through an authenticated SOCKS5 proxy to the public internet. A failed proxy stops forwarding.</desc>
           <path class="route-base" d="M54 243H100Q124 243 124 219V173Q124 149 148 149H244"/>
           <path class="route-base" d="M244 149H422Q484 149 484 87V60"/>
           <path class="client-path" d="M54 243H100Q124 243 124 219V173Q124 149 148 149H244"/>
@@ -57,98 +59,116 @@
           <path class="dns-path" d="M244 149H422Q484 149 484 87V60"/>
           <circle class="map-node" cx="54" cy="243" r="25"/>
           <g class="client-icon" aria-hidden="true"><rect x="42" y="233" width="24" height="15" rx="3"/><path d="M38 253h32"/></g>
-          <text class="map-label" x="54" y="291" text-anchor="middle">Your devices</text>
+          <text class="map-label" x="54" y="291" text-anchor="middle" data-i18n="relayYourDevices">Your devices</text>
           <text class="map-annotation" x="133" y="117">Tailscale</text>
           <circle class="relay-halo" cx="244" cy="149" r="76"/>
           <circle class="relay-node" cx="244" cy="149" r="57"/>
           <g class="relay-icon" aria-hidden="true"><path d="M217 165h12a15 15 0 0 0 15-15v-2a15 15 0 0 1 15-15h12"/><circle cx="217" cy="165" r="5"/><circle cx="271" cy="133" r="5"/></g>
           <text class="map-label map-label-strong" x="244" y="253" text-anchor="middle">TailRelay</text>
-          <text class="map-detail" x="244" y="277" text-anchor="middle">One device identity</text>
+          <text class="map-detail" x="244" y="277" text-anchor="middle" data-i18n="relayDeviceIdentity">One device identity</text>
           <circle class="proxy-node" cx="398" cy="149" r="17"/>
           <path class="proxy-glyph" d="M391 149h14M398 142v14" aria-hidden="true"/>
           <text class="map-label" x="398" y="207" text-anchor="middle">SOCKS5</text>
-          <text class="map-detail" x="398" y="231" text-anchor="middle">Your upstream</text>
+          <text class="map-detail" x="398" y="231" text-anchor="middle" data-i18n="relayYourUpstream">Your upstream</text>
           <circle class="internet-node" cx="484" cy="60" r="25"/>
           <g class="globe-icon" aria-hidden="true"><circle cx="484" cy="60" r="13"/><ellipse cx="484" cy="60" rx="5" ry="13"/><path d="M471 60h26"/></g>
-          <text class="map-label" x="432" y="21">Internet</text>
+          <text class="map-label" x="432" y="21" data-i18n="relayInternet">Internet</text>
           <g class="stop-marker" aria-hidden="true"><circle cx="336" cy="149" r="15"/><path d="m331 144 10 10m0-10-10 10"/></g>
         </svg>
-        <div class="concept-controls" data-demo-controls hidden role="group" aria-label="Choose a conceptual request">
-          <button type="button" data-relay-mode="tcp" aria-pressed="true">TCP request</button>
-          <button type="button" data-relay-mode="dns" aria-pressed="false">DNS lookup</button>
-          <button type="button" data-relay-mode="blocked" aria-pressed="false">Proxy down</button>
+        <div class="concept-controls" data-demo-controls hidden role="group" aria-label="Choose a conceptual request" data-i18n-aria-label="relayChooseRequest">
+          <button type="button" data-relay-mode="tcp" aria-pressed="true" data-i18n="relayTcpRequest">TCP request</button>
+          <button type="button" data-relay-mode="dns" aria-pressed="false" data-i18n="relayDnsLookup">DNS lookup</button>
+          <button type="button" data-relay-mode="blocked" aria-pressed="false" data-i18n="relayProxyDown">Proxy down</button>
         </div>
         <p class="concept-result" id="relay-result" role="status" aria-live="polite" aria-atomic="true">Client TCP follows the selected relay and its SOCKS5 upstream to the internet.</p>
-        <p class="concept-disclaimer">Illustration only. These controls do not change your network.</p>
+        <p class="concept-disclaimer" data-i18n="relayConceptDisclaimer">Illustration only. These controls do not change your network.</p>
       </figure>
     </section>
 
     <section class="routing-section wrap" id="routing" aria-labelledby="routing-title">
       <div class="section-heading">
-        <h2 id="routing-title">A deliberately<br>narrow path.</h2>
-        <p>The upstream is a choice you make once per instance. Forwarding stays on that path.</p>
+        <h2 id="routing-title" data-i18n-html="relayRoutingTitle">A deliberately<br>narrow path.</h2>
+        <p data-i18n="relayRoutingDescription">The upstream is a choice you make once per instance. Forwarding stays on that path.</p>
       </div>
       <div class="routing-content">
         <dl class="behavior-list">
           <div>
-            <dt>One relay, one upstream</dt>
-            <dd>Each instance pairs a Tailscale device with a SOCKS5 proxy, its own credentials, and persistent device state. Select a different exit node to use a different upstream.</dd>
+            <dt data-i18n="relayUpstreamTitle">One relay, one upstream</dt>
+            <dd data-i18n="relayUpstreamDescription">Each instance pairs a Tailscale device with a SOCKS5 proxy, its own credentials, and persistent device state. Select a different exit node to use a different upstream.</dd>
           </div>
           <div>
-            <dt>DNS follows the exit</dt>
-            <dd>TCP and UDP queries on port 53 are intercepted and sent as TLS-verified DNS-over-HTTPS through the same proxy. There is no local DNS fallback.</dd>
+            <dt data-i18n="relayDnsTitle">DNS follows the exit</dt>
+            <dd data-i18n="relayDnsDescription">TCP and UDP queries on port 53 are intercepted and sent as TLS-verified DNS-over-HTTPS through the same proxy. There is no local DNS fallback.</dd>
           </div>
           <div>
-            <dt>Failure stops client forwarding</dt>
-            <dd>If proxy authentication or an upstream connection fails, the connection fails. TailRelay never falls back to a direct host connection or another provider.</dd>
+            <dt data-i18n="relayFailureTitle">Failure stops client forwarding</dt>
+            <dd data-i18n="relayFailureDescription">If proxy authentication or an upstream connection fails, the connection fails. TailRelay never falls back to a direct host connection or another provider.</dd>
           </div>
         </dl>
         <aside class="scope-note" aria-labelledby="scope-title">
           <svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M6 24h36M24 6v36"/><circle cx="24" cy="24" r="14"/></svg>
-          <h3 id="scope-title">Know what it carries.</h3>
-          <p>TCP and intercepted DNS are the default. Ordinary UDP, including QUIC, gaming, and voice traffic, is off. ICMP forwarding is refused.</p>
-          <p>Optional UDP needs a verified SOCKS5 UDP ASSOCIATE upstream whose relay IP matches the configured proxy IP.</p>
-          <p class="scope-conclusion">This is a focused exit, not an all-protocol VPN or a private subnet router.</p>
+          <h3 id="scope-title" data-i18n="relayScopeTitle">Know what it carries.</h3>
+          <p data-i18n="relayScopeDescription">TCP and intercepted DNS are the default. Ordinary UDP, including QUIC, gaming, and voice traffic, is off. ICMP forwarding is refused.</p>
+          <p data-i18n="relayScopeUdp">Optional UDP needs a verified SOCKS5 UDP ASSOCIATE upstream whose relay IP matches the configured proxy IP.</p>
+          <p class="scope-conclusion" data-i18n="relayScopeConclusion">This is a focused exit, not an all-protocol VPN or a private subnet router.</p>
         </aside>
       </div>
-      <p class="boundary-note"><strong>The boundary:</strong> fail-closed behavior applies to forwarded client traffic. Tailscale control connections and tunnel transport still use the host network.</p>
+      <p class="boundary-note" data-i18n-html="relayBoundary"><strong>The boundary:</strong> fail-closed behavior applies to forwarded client traffic. Tailscale control connections and tunnel transport still use the host network.</p>
     </section>
 
     <section class="setup-section" id="get-started" aria-labelledby="setup-title">
       <div class="wrap setup-layout">
         <div class="setup-intro">
-          <h2 id="setup-title">Bring your<br>own upstream.</h2>
-          <p>Start with a Linux host, a Tailnet you administer, and a SOCKS5 provider that requires a username and password.</p>
-          <a class="text-link" href="https://github.com/idy/tailrelay/blob/main/README.md">Open the setup guide <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
-          <p class="access-note">Open source under GPL-3.0-or-later. Public releases include Linux and macOS builds for amd64 and arm64.</p>
+          <h2 id="setup-title" data-i18n-html="relaySetupTitle">Bring your<br>own upstream.</h2>
+          <p data-i18n="relaySetupDescription">Start with a Linux host, a Tailnet you administer, and a SOCKS5 provider that requires a username and password.</p>
+          <a class="text-link" href="https://github.com/idy/tailrelay/blob/main/README.md"><span data-i18n="relaySetupGuide">Open the setup guide</span> <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+          <p class="access-note" data-i18n="relayLicenseNote">Open source under GPL-3.0-or-later. Public releases include Linux and macOS builds for amd64 and arm64.</p>
+          <div class="release-downloads">
+            <h3 data-i18n="relayDownloadsTitle">Download a release</h3>
+            <p class="release-status" data-release-status role="status" aria-live="polite">Check GitHub Releases for the latest version and downloads.</p>
+            <p class="download-platform" data-i18n="relayLinuxCli">Linux CLI</p>
+            <div class="download-actions" role="group" aria-label="Download the Linux CLI" data-i18n-aria-label="relayLinuxDownload">
+              <a class="button button-secondary" data-download="linux-amd64-deb" href="https://github.com/idy/tailrelay/releases">amd64 .deb</a>
+              <a class="button button-secondary" data-download="linux-arm64-deb" href="https://github.com/idy/tailrelay/releases">arm64 .deb</a>
+              <a class="button button-secondary" data-download="linux-amd64" href="https://github.com/idy/tailrelay/releases">amd64 .tar.gz</a>
+              <a class="button button-secondary" data-download="linux-arm64" href="https://github.com/idy/tailrelay/releases">arm64 .tar.gz</a>
+            </div>
+            <p class="download-platform" data-i18n="relayMacCli">macOS CLI</p>
+            <div class="download-actions" role="group" aria-label="Download the macOS CLI" data-i18n-aria-label="relayMacDownload">
+              <a class="button button-secondary" data-download="darwin-arm64" href="https://github.com/idy/tailrelay/releases">Apple Silicon .tar.gz</a>
+              <a class="button button-secondary" data-download="darwin-amd64" href="https://github.com/idy/tailrelay/releases">Intel Mac .tar.gz</a>
+            </div>
+            <p class="download-other"><a data-release-link href="https://github.com/idy/tailrelay/releases" data-i18n="relayReleaseNotes">Release notes and all downloads</a></p>
+            <p class="download-other"><a data-download="checksums" href="https://github.com/idy/tailrelay/releases">SHA256SUMS</a></p>
+          </div>
         </div>
         <div class="setup-instructions">
           <ol class="setup-steps">
             <li>
-              <h3>Install the latest release.</h3>
-              <p>The installer detects your platform and verifies SHA-256. Linux uses a Debian package when available; macOS and user-local installs use a CLI archive. Browse <a href="https://github.com/idy/tailrelay/releases">all releases</a> for manual downloads.</p>
+              <h3 data-i18n="relayInstallTitle">Install the latest release.</h3>
+              <p data-i18n-html="relayInstallDescription">The installer detects your platform and verifies SHA-256. Linux uses a Debian package when available; macOS and user-local installs use a CLI archive. Browse <a href="https://github.com/idy/tailrelay/releases">all releases</a> for manual downloads.</p>
               <div class="command-line">
                 <code id="relay-install-command">curl -fsSL https://raw.githubusercontent.com/idy/tailrelay/main/install.sh | sh</code>
-                <button class="copy-button" type="button" data-copy-target="relay-install-command" aria-label="Copy TailRelay install command" hidden>Copy</button>
+                <button class="copy-button" type="button" data-copy-target="relay-install-command" aria-label="Copy TailRelay install command" data-i18n-aria-label="relayCopyInstall" hidden>Copy</button>
               </div>
               <p class="copy-status" role="status" aria-live="polite" data-copy-status></p>
-              <p>Installation leaves device enrollment and instance configuration to you. For a user-local install, replace the final <code>sh</code> with <code>sh -s -- --no-sudo</code>.</p>
+              <p data-i18n-html="relayInstallOptions">Installation leaves device enrollment and instance configuration to you. For a user-local install, replace the final <code>sh</code> with <code>sh -s -- --no-sudo</code>.</p>
             </li>
             <li>
-              <h3>Configure one instance.</h3>
-              <p>Use the <a href="https://github.com/idy/tailrelay/blob/main/config.example.yaml">example configuration</a> as a starting point. Set your upstream, keep credentials separate, and preserve the instance’s device state.</p>
+              <h3 data-i18n="relayConfigureTitle">Configure one instance.</h3>
+              <p data-i18n-html="relayConfigureDescription">Use the <a href="https://github.com/idy/tailrelay/blob/main/config.example.yaml">example configuration</a> as a starting point. Set your upstream, keep credentials separate, and preserve the instance’s device state.</p>
             </li>
             <li>
-              <h3>Authorize, approve, select.</h3>
-              <p>Authorize the device in your Tailnet, approve its exit-node routes, and select it on a client. Your Tailnet policy must allow that client to use the exit.</p>
+              <h3 data-i18n="relayAuthorizeTitle">Authorize, approve, select.</h3>
+              <p data-i18n="relayAuthorizeDescription">Authorize the device in your Tailnet, approve its exit-node routes, and select it on a client. Your Tailnet policy must allow that client to use the exit.</p>
             </li>
           </ol>
           <div class="build-note">
-            <h3>Prefer to build from source?</h3>
-            <p>With Go 1.26.2 or later, run this in your <code>tailrelay</code> checkout. The Makefile includes the required build tags.</p>
+            <h3 data-i18n="relayBuildTitle">Prefer to build from source?</h3>
+            <p data-i18n-html="relayBuildDescription">With Go 1.26.2 or later, run this in your <code>tailrelay</code> checkout. The Makefile includes the required build tags.</p>
             <div class="command-line">
               <code id="relay-build-command">make test check linux</code>
-              <button class="copy-button" type="button" data-copy-target="relay-build-command" aria-label="Copy TailRelay build command" hidden>Copy</button>
+              <button class="copy-button" type="button" data-copy-target="relay-build-command" aria-label="Copy TailRelay build command" data-i18n-aria-label="relayCopyBuild" hidden>Copy</button>
             </div>
             <p class="copy-status" role="status" aria-live="polite" data-copy-status></p>
           </div>
@@ -157,36 +177,39 @@
     </section>
 
     <section class="questions-section wrap" aria-labelledby="questions-title">
-      <h2 id="questions-title">A few practical details.</h2>
+      <h2 id="questions-title" data-i18n="relayQuestionsTitle">A few practical details.</h2>
       <div class="questions">
         <details>
-          <summary>Does it take over the server’s network?</summary>
-          <p>The default service embeds userspace Tailscale and can run as an ordinary user. It does not create a host TUN or change the host’s default route, system DNS, IP forwarding, or firewall. An explicit local-TUN option is available for a separate Linux network namespace; it has its own setup and permission requirements.</p>
+          <summary data-i18n="relayFaqNetworkTitle">Does it take over the server’s network?</summary>
+          <p data-i18n="relayFaqNetworkAnswer">The default service embeds userspace Tailscale and can run as an ordinary user. It does not create a host TUN or change the host’s default route, system DNS, IP forwarding, or firewall. An explicit local-TUN option is available for a separate Linux network namespace; it has its own setup and permission requirements.</p>
         </details>
         <details>
-          <summary>Can several exits share one host?</summary>
-          <p>Yes. Run one process per upstream, with a distinct hostname, state directory, and credentials. Keep device state across restarts, and never copy the same active device identity between simultaneous instances.</p>
+          <summary data-i18n="relayFaqInstancesTitle">Can several exits share one host?</summary>
+          <p data-i18n="relayFaqInstancesAnswer">Yes. Run one process per upstream, with a distinct hostname, state directory, and credentials. Keep device state across restarts, and never copy the same active device identity between simultaneous instances.</p>
         </details>
         <details>
-          <summary>What should I test before using it?</summary>
-          <p>Verify a new TCP connection and an uncached DNS query through the selected exit. Then verify that both fail when its upstream is unavailable. External ping is not a health check for this service because ICMP forwarding is refused. IPv6 destinations also require IPv6 support at your SOCKS5 upstream.</p>
+          <summary data-i18n="relayFaqTestTitle">What should I test before using it?</summary>
+          <p data-i18n="relayFaqTestAnswer">Verify a new TCP connection and an uncached DNS query through the selected exit. Then verify that both fail when its upstream is unavailable. External ping is not a health check for this service because ICMP forwarding is refused. IPv6 destinations also require IPv6 support at your SOCKS5 upstream.</p>
         </details>
       </div>
     </section>
 
     <div class="companion wrap">
-      <p>Choosing routes on your Mac?</p>
-      <a href="https://tailsplit.idy.dev/">Meet TailSplit <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+      <p data-i18n="relayCompanion">Choosing routes on your Mac?</p>
+      <a href="https://tailsplit.idy.dev/"><span data-i18n="relayMeetSplit">Meet TailSplit</span> <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
     </div>
   </main>
 
-  <footer class="site-footer wrap">
-    <a class="footer-brand" href="#">TailRelay</a>
-    <p>An independent project built with Tailscale and sing-box.</p>
-    <nav class="footer-links" aria-label="Project links">
-      <a href="https://idy.dev/">idy.dev</a>
-      <a href="https://github.com/idy/tailrelay">GitHub</a>
-    </nav>
+  <footer class="idy-footer">
+    <div class="idy-footer-inner">
+      <div><a class="idy-home" href="https://idy.dev/">idy.dev</a><p data-i18n="footerNote">Independent tools. Open source.</p></div>
+      <nav data-i18n-aria-label="projectLinks" aria-label="Project links">
+        <a href="https://idy.dev/" data-i18n="allProjects">All projects</a>
+        <a href="https://github.com/idy/tailrelay">GitHub</a>
+        <a href="https://github.com/idy/tailrelay/releases" data-i18n="releases">Releases</a>
+        <a href="https://github.com/idy/tailrelay/blob/main/LICENSE">GPL-3.0</a>
+      </nav>
+    </div>
   </footer>
 </body>
 </html>
