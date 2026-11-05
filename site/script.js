@@ -19,6 +19,7 @@
   Object.assign(english, {
     pageTitle: document.title,
     pageDescription: document.querySelector('meta[name="description"]').content,
+    starLabel: 'Star TailRelay on GitHub (opens in a new tab)',
     relayOgDescription: document.querySelector('meta[property="og:description"]').content,
     relayTcpResult: 'Client TCP follows the selected relay and its SOCKS5 upstream to the internet.',
     relayDnsResult: 'Intercepted DNS becomes TLS-verified DNS-over-HTTPS and travels through the same SOCKS5 upstream.',
@@ -31,6 +32,7 @@
     relayDownloadFallback: 'Open the release page: no matching package in this release',
   });
   const chinese = {
+    "starLabel": "star — 在 GitHub 上为 TailRelay 点星（在新标签页打开）",
     "relayNavRouting": "转发路径",
     "relayNavInstall": "安装",
     "pageTitle": "TailRelay — 在 Tailnet 中使用 SOCKS5 出口",

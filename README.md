@@ -173,9 +173,10 @@ is required. The Pages workflow also publishes the root installer as `/install.s
 
 The page follows the browser's English/Chinese language preference and the
 system light/dark theme. Header controls override either choice and remember it
-for this site's origin. `site/shared/` contains the common idy.dev header/footer
-styles, preference and release helpers, and the self-hosted Manrope font/license;
-keep those shared files identical across the project websites.
+for this site's origin. `site/shared/` contains the common idy.dev shell and
+preference and release helpers. Its self-hosted fonts use Montserrat for headings,
+Monda for text and controls, Lato for notes and status, and Phosphor for icons;
+the font licenses are included.
 
 Downloads use GitHub's latest stable release, falling back to the newest published
 prerelease only when no stable release exists. Buttons use the actual release
