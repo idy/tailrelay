@@ -222,6 +222,49 @@ test('clipboard failure explains keyboard copying in the active language', async
   assert.match(page.copyStatuses[0].textContent, /使用键盘复制/);
 });
 
+test('header keeps the same real links and accessible controls on desktop and mobile', async () => {
+  const header = html.match(/<header class="idy-header compact-header">([\s\S]*?)<\/header>/)[1];
+  const navigation = [...header.matchAll(/<nav class="idy-(?:nav|mobile-panel)"[^>]*>([\s\S]*?)<\/nav>/g)];
+  const links = nav => [...nav[1].matchAll(/<a\b([^>]*)>([^<]*)<\/a>/g)].map(match => {
+    const attributes = attrs(match[1]);
+    return [attributes.href, match[2], attributes['data-i18n'] || null];
+  });
+  assert.equal(navigation.length, 2);
+  assert.deepEqual(links(navigation[0]), links(navigation[1]));
+  assert.deepEqual(links(navigation[0]), [
+    ['#routing', 'Routing', 'relayNavRouting'], ['#get-started', 'Install', 'relayNavInstall'],
+    ['https://github.com/idy/tailrelay', 'GitHub', null], ['https://idy.dev/', 'idy.dev', null],
+  ]);
+  assert.match(header, /<a class="idy-home" href="#main">TailRelay<\/a>/);
+  assert.match(header, /<details class="idy-mobile">\s*<summary aria-label="Main navigation" data-i18n-aria-label="navigation">/);
+  assert.match(header, /<select data-idy-language>/);
+  assert.match(header, /<select data-idy-theme>/);
+  const action = attrs(header.match(/<a class="idy-action"([^>]*)>/)[1]);
+  assert.equal(action.href, 'https://github.com/idy/tailrelay');
+  assert.equal(action.target, '_blank');
+  assert.match(action.rel, /noopener/);
+  assert.equal(action['aria-label'], 'Star TailRelay on GitHub (opens in a new tab)');
+  assert.equal(action['data-i18n-aria-label'], 'starLabel');
+  assert.match(header, /<i class="ph ph-star" aria-hidden="true"><\/i><span>star<\/span>/);
+
+  const page = await openSite([ok(release())]);
+  const star = page.document.querySelectorAll('[data-i18n-aria-label]')
+    .find(node => node.getAttribute('data-i18n-aria-label') === 'starLabel');
+  assert.equal(star.getAttribute('aria-label'), 'Star TailRelay on GitHub (opens in a new tab)');
+  page.changeLanguage('zh');
+  assert.match(star.getAttribute('aria-label'), /GitHub.*TailRelay.*新标签页/);
+  page.changeLanguage('en');
+  assert.equal(star.getAttribute('aria-label'), 'Star TailRelay on GitHub (opens in a new tab)');
+});
+
+test('system dark theme uses the explicit dark palette without JavaScript', () => {
+  const css = readFileSync(path.join(siteDir, 'styles.css'), 'utf8');
+  const explicit = css.match(/:root\[data-theme="dark"\] \{([\s\S]*?)\}/)[1];
+  const automatic = css.match(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme\]\) \{([\s\S]*?)\}/)[1];
+  const declarations = block => [...block.matchAll(/(?:--[\w-]+|color-scheme):\s*[^;]+;/g)].map(match => match[0]);
+  assert.deepEqual(declarations(automatic), declarations(explicit));
+});
+
 test('browser language, manual preferences and system theme changes coexist', async () => {
   const page = await openSite([ok(release())], { languages: ['zh-TW', 'en-US'] });
   assert.equal(page.document.documentElement.lang, 'zh-CN');

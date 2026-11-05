@@ -34,6 +34,23 @@
   --scope-accent: #a3baff;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --accent: #a3baff;
+    --accent-soft: #273b63;
+    --accent-hover: #bfd0ff;
+    --on-accent: #142b57;
+    --selection: #324d7a;
+    --stop: #ffaca5;
+    --scope-bg: #20334e;
+    --scope-ink: #edf2fa;
+    --scope-muted: #bacbe1;
+    --scope-line: #405673;
+    --scope-accent: #a3baff;
+  }
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 32px; }
 body { margin: 0; color: var(--ink); background: var(--paper); font: 400 16px/1.65 var(--font); -webkit-font-smoothing: antialiased; }
@@ -207,7 +224,7 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
   .routing-section { padding-block: 43px 48px; }
   .section-heading { grid-template-columns: 1fr; gap: 18px; margin-bottom: 30px; }
   h2 { font-size: 34px; }
-  .section-heading h2 br, .setup-intro h2 br { display: none; }
+  .section-heading, .setup-layout { grid-template-columns: minmax(0, 1fr); }
   .section-heading > p { max-width: 38ch; }
   .routing-content { grid-template-columns: 1fr; gap: 28px; }
   .behavior-list dd { font-size: 14px; }
@@ -227,6 +244,9 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
   .questions summary { font-size: 14px; }
   .companion { align-items: flex-start; flex-direction: column; gap: 10px; padding-block: 23px; }
   .companion p { font-size: 14px; }
+}
+@media (max-width: 360px) {
+  h1 { font-size: 34px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
