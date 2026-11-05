@@ -32,7 +32,7 @@
     relayDownloadFallback: 'Open the release page: no matching package in this release',
   });
   const chinese = {
-    "starLabel": "在 GitHub 上为 TailRelay 点星（在新标签页打开）",
+    "starLabel": "star — 在 GitHub 上为 TailRelay 点星（在新标签页打开）",
     "relayNavRouting": "转发路径",
     "relayNavInstall": "安装",
     "pageTitle": "TailRelay — 在 Tailnet 中使用 SOCKS5 出口",

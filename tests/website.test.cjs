@@ -252,7 +252,7 @@ test('header keeps the same real links and accessible controls on desktop and mo
     .find(node => node.getAttribute('data-i18n-aria-label') === 'starLabel');
   assert.equal(star.getAttribute('aria-label'), 'Star TailRelay on GitHub (opens in a new tab)');
   page.changeLanguage('zh');
-  assert.match(star.getAttribute('aria-label'), /GitHub.*TailRelay.*新标签页/);
+  assert.match(star.getAttribute('aria-label'), /^star\b.*GitHub.*TailRelay.*新标签页/);
   page.changeLanguage('en');
   assert.equal(star.getAttribute('aria-label'), 'Star TailRelay on GitHub (opens in a new tab)');
 });
