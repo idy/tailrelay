@@ -173,10 +173,12 @@ is required. The Pages workflow also publishes the root installer as `/install.s
 
 The page follows the browser's English/Chinese language preference and the
 system light/dark theme. Header controls override either choice and remember it
-for this site's origin. `site/shared/` contains the common idy.dev shell and
-preference and release helpers. Its self-hosted fonts use Montserrat for headings,
-Monda for text and controls, Lato for notes and status, and Phosphor for icons;
-the font licenses are included.
+for this site's origin. `site/shared/sdk/` vendors the complete idy.dev site SDK
+distribution, including its font assets and licenses. The Component Datasheet
+system uses self-hosted Archivo, a blue masthead, white/deep navy sheets, 2px
+corners, fine rules and no shadows. `styles.css` maps the page's existing roles
+to `--idy-*` tokens and retains its routing diagram and setup layout. Refresh
+the whole SDK directory together; do not edit the bundled files individually.
 
 Downloads use GitHub's latest stable release, falling back to the newest published
 prerelease only when no stable release exists. Buttons use the actual release

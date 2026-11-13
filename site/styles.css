@@ -1,59 +1,26 @@
+/* Legacy page roles resolve to the shared SDK tokens in both appearances. */
 :root {
-  color-scheme: light;
-  --paper: var(--idy-bg, #f7f9fc);
-  --ink: var(--idy-ink, #17243a);
-  --accent: #2357d8;
-  --accent-soft: #e6edfc;
-  --accent-hover: #1b46b5;
-  --selection: #cfddfc;
-  --scope-bg: #152b45;
-  --scope-ink: #ffffff;
-  --scope-muted: #d6e0ee;
-  --scope-line: #42566f;
-  --scope-accent: #acc4fa;
-  --muted: var(--idy-muted, #52647b);
-  --line: var(--idy-line, #dce4ef);
-  --surface: var(--idy-surface, #ffffff);
-  --on-accent: #ffffff;
-  --stop: #a34139;
-  --font: var(--idy-font, Manrope, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  --paper: var(--idy-bg);
+  --ink: var(--idy-ink);
+  --accent: var(--idy-accent);
+  --accent-soft: var(--idy-spec-fill, var(--idy-hover));
+  --accent-hover: var(--idy-accent);
+  --selection: var(--idy-masthead, #0b5cad);
+  --scope-bg: var(--idy-bg);
+  --scope-ink: var(--idy-ink);
+  --scope-muted: var(--idy-muted);
+  --scope-line: var(--idy-line);
+  --scope-accent: var(--idy-accent);
+  --muted: var(--idy-muted);
+  --line: var(--idy-line);
+  --surface: var(--idy-surface);
+  --on-accent: var(--idy-ink);
+  --stop: var(--idy-ink);
+  --font: var(--idy-font);
 }
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --accent: #a3baff;
-  --accent-soft: #273b63;
-  --accent-hover: #bfd0ff;
-  --on-accent: #142b57;
-  --selection: #324d7a;
-  --stop: #ffaca5;
-  --scope-bg: #20334e;
-  --scope-ink: #edf2fa;
-  --scope-muted: #bacbe1;
-  --scope-line: #405673;
-  --scope-accent: #a3baff;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    color-scheme: dark;
-    --accent: #a3baff;
-    --accent-soft: #273b63;
-    --accent-hover: #bfd0ff;
-    --on-accent: #142b57;
-    --selection: #324d7a;
-    --stop: #ffaca5;
-    --scope-bg: #20334e;
-    --scope-ink: #edf2fa;
-    --scope-muted: #bacbe1;
-    --scope-line: #405673;
-    --scope-accent: #a3baff;
-  }
-}
-
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 32px; }
-body { margin: 0; color: var(--ink); background: var(--paper); font: 400 16px/1.65 var(--font); -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: auto; scroll-padding-top: 32px; }
+body { margin: 0; color: var(--ink); background: var(--paper); font: 400 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-underline-offset: 4px; text-decoration-thickness: 1px; }
 a:hover { color: var(--accent); }
 button { font: inherit; }
@@ -66,26 +33,26 @@ svg { display: block; }
 h1, h2, h3, p, figure, dl, dd { margin: 0; }
 h1, h2, h3 { font-weight: 600; }
 p { max-width: 68ch; }
-code { font: 0.86em/1.5 "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+code { font: 0.86em/1.5 var(--idy-font); }
 .wrap { width: min(1232px, calc(100% - 96px)); margin-inline: auto; }
-.skip-link { position: fixed; z-index: 10; top: 12px; left: 16px; padding: 10px 18px; border-radius: 6px; color: var(--paper); background: var(--ink); transform: translateY(-160%); }
+.skip-link { position: fixed; z-index: 10; top: 12px; left: 16px; padding: 10px 18px; border-radius: 2px; color: var(--paper); background: var(--ink); transform: translateY(-160%); }
 .skip-link:focus { transform: translateY(0); color: var(--paper); }
 
 
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 42px; padding-block: 77px 89px; }
-h1 { font-size: clamp(48px, 4.6vw, 68px); line-height: 1.075; letter-spacing: -0.055em; }
+h1 { font-size: clamp(48px, 4.6vw, 68px); line-height: 1.075; letter-spacing: -.01em; }
 .hero-description { max-width: 47ch; margin-top: 29px; font-size: 18px; line-height: 1.7; color: var(--muted); }
 .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 27px; margin-top: 33px; }
-.button { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; padding: 11px 23px; border: 1px solid transparent; border-radius: 7px; font-size: 15px; font-weight: 600; text-decoration: none; }
-.button-primary { color: var(--on-accent); background: var(--accent); }
-.button-primary:hover { color: var(--on-accent); background: var(--accent-hover); }
+.button { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; padding: 11px 23px; border: 1px solid transparent; border-radius: 2px; font-size: 15px; font-weight: 600; text-decoration: none; }
+.button-primary { color: var(--accent); background: var(--surface, var(--idy-surface)); }
+.button-primary:hover { color: var(--accent); background: var(--accent-soft); }
 .text-link { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; text-decoration: none; }
 .text-link svg, .companion svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .hero-note { max-width: 44ch; margin-top: 26px; color: var(--muted); font-size: 13px; line-height: 1.65; }
 
 .route-concept { min-width: 0; padding-top: 6px; }
 .route-concept figcaption { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
-.concept-dot { width: 13px; height: 6px; border: 1.5px solid var(--accent); border-radius: 4px; }
+.concept-dot { width: 13px; height: 6px; border: 1.5px solid var(--accent); border-radius: 2px; }
 .relay-map { width: 100%; height: auto; margin: 7px 0 18px; overflow: visible; }
 .relay-map text { font-family: var(--font); fill: var(--ink); }
 .route-base { fill: none; stroke: var(--line); stroke-width: 4; }
@@ -112,7 +79,7 @@ h1 { font-size: clamp(48px, 4.6vw, 68px); line-height: 1.075; letter-spacing: -0
 .route-concept[data-mode="blocked"] .proxy-node, .route-concept[data-mode="blocked"] .proxy-glyph { stroke: var(--muted); }
 .route-concept[data-mode="blocked"] .stop-marker { display: block; }
 .concept-controls { display: flex; flex-wrap: wrap; gap: 7px; }
-.concept-controls button { min-height: 42px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); background: transparent; font-size: 13px; font-weight: 500; }
+.concept-controls button { min-height: 42px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 2px; color: var(--muted); background: transparent; font-size: 13px; font-weight: 500; }
 .concept-controls button:hover { border-color: var(--accent); color: var(--accent); }
 .concept-controls button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .concept-result { min-height: 3.5em; margin-top: 17px; font-size: 14px; line-height: 1.7; }
@@ -120,7 +87,7 @@ h1 { font-size: clamp(48px, 4.6vw, 68px); line-height: 1.075; letter-spacing: -0
 
 .routing-section { padding-block: 60px 78px; border-top: 1px solid var(--line); }
 .section-heading { display: grid; grid-template-columns: 1fr 1fr; gap: 42px; align-items: end; margin-bottom: 46px; }
-h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.045em; }
+h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -.01em; }
 .section-heading > p { max-width: 44ch; color: var(--muted); font-size: 17px; }
 .routing-content { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 82px; }
 .behavior-list > div { padding-block: 22px; border-top: 1px solid var(--line); }
@@ -128,7 +95,7 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
 .behavior-list > div:last-child { padding-bottom: 0; }
 .behavior-list dt { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
 .behavior-list dd { max-width: 58ch; margin-top: 8px; color: var(--muted); font-size: 15px; }
-.scope-note { align-self: start; padding: 29px 31px 32px; border-radius: 3px 26px 3px 3px; color: var(--scope-ink); background: var(--scope-bg); }
+.scope-note { align-self: start; padding: 29px 31px 32px; border-radius: 2px; color: var(--scope-ink); background: var(--scope-bg); }
 .scope-note > svg { width: 32px; height: 32px; margin-bottom: 22px; stroke: var(--scope-accent); stroke-width: 1.5; }
 .scope-note h3 { font-size: 22px; line-height: 1.3; letter-spacing: -0.025em; }
 .scope-note p { margin-top: 13px; color: var(--scope-muted); font-size: 14px; line-height: 1.75; }
@@ -161,9 +128,9 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
 .setup-steps p a:hover { color: var(--accent); }
 .build-note { margin-top: 35px; padding-top: 28px; border-top: 1px solid var(--line); }
 .build-note > p { max-width: 57ch; margin-top: 9px; color: var(--muted); font-size: 13px; }
-.command-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 17px; padding: 13px 14px 13px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.command-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 17px; padding: 13px 14px 13px 18px; border: 1px solid var(--line); border-radius: 2px; background: var(--paper); }
 .command-line > code { min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
-.copy-button { flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: var(--surface); font-size: 12px; font-weight: 600; }
+.copy-button { flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 2px; color: var(--ink); background: var(--surface); font-size: 12px; font-weight: 600; }
 :root[data-idy-header-pending] .copy-button[hidden] { display: inline-flex !important; visibility: hidden; }
 .copy-button:hover { color: var(--accent); border-color: var(--accent); }
 .build-note > .copy-status { min-height: 1.65em; margin-top: 7px; font-size: 12px; }
@@ -174,8 +141,8 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
 .questions details:first-child { border-top: 1px solid var(--line); }
 .questions summary { position: relative; padding: 20px 28px 20px 0; list-style: none; font-size: 15px; font-weight: 500; cursor: pointer; }
 .questions summary::-webkit-details-marker { display: none; }
-.questions summary::after { content: "+"; position: absolute; right: 1px; top: 16px; color: var(--accent); font-size: 24px; font-weight: 400; line-height: 1.4; }
-.questions details[open] summary::after { content: "−"; }
+.questions summary::after { content: ""; position: absolute; right: 4px; top: 24px; width: 7px; height: 7px; border-right: 1.5px solid var(--accent); border-bottom: 1.5px solid var(--accent); transform: rotate(-45deg); }
+.questions details[open] summary::after { transform: rotate(45deg); }
 .questions details > p { padding-bottom: 22px; color: var(--muted); font-size: 14px; }
 .companion { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding-block: 26px; border-block: 1px solid var(--line); }
 .companion p { color: var(--muted); font-size: 16px; }
@@ -212,8 +179,8 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
   html { scroll-padding-top: 22px; }
   .wrap { width: calc(100% - 40px); }
   .hero { padding-top: 43px; gap: 42px; }
-  h1 { font-size: clamp(39px, 9vw, 50px); letter-spacing: -0.055em; }
-  .hero-description { margin-top: 24px; font-size: 16px; line-height: 1.75; }
+  h1 { font-size: clamp(39px, 9vw, 50px); letter-spacing: -.01em; }
+  .hero-description { margin-top: 24px; font-size: 15px; line-height: 1.5; }
   .hero-actions { gap: 23px; margin-top: 27px; }
   .hero-note { margin-top: 21px; font-size: 12px; }
   .route-concept figcaption { font-size: 12px; }
@@ -252,3 +219,45 @@ h2 { font-size: clamp(32px, 3vw, 43px); line-height: 1.16; letter-spacing: -0.04
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* Page composition stays local; the SDK owns the Component Datasheet system. */
+.idy-site { color: var(--idy-body); font-size: 15px; line-height: 1.5; }
+.idy-site :is(h1, h2, h3, dt) { color: var(--idy-ink); }
+.idy-site h1 { font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: -.01em; }
+.idy-site h2 { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -.01em; }
+.idy-site h3 { font-size: 18px; line-height: 24px; font-weight: 700; letter-spacing: -.005em; }
+.idy-site :is(.button, .primary-link, .text-link, .docs-link, .copy-button, [data-copy], .release-stage, .release-label, .download-platform, .concept-controls button, .code-heading, .code-header, .panel-header) { font-stretch: 75%; letter-spacing: .02em; }
+.idy-site :is(.release-version, .release-status, .release-file, .stage-counter, code, pre) { font-variant-numeric: tabular-nums lining-nums; }
+.idy-site :is(.button, .primary-link) { min-height: 44px; padding: 8px 16px; border: 1px solid var(--idy-line); border-radius: 2px; background: var(--idy-surface); color: var(--idy-accent); font-size: 14px; line-height: 20px; }
+.idy-site :is(.button, .primary-link):hover { background: var(--idy-spec-fill, var(--idy-hover)); color: var(--idy-accent); border-color: var(--idy-accent); filter: none; }
+.idy-site :is(.hero-description, .hero-intro > p, .intro) { font-size: 16px; line-height: 24px; }
+.idy-site :is(.hero-description, .intro) { margin-top: 16px; }
+.idy-site .release-version { font-size: 22px; line-height: 28px; letter-spacing: 0; }
+.idy-site :focus-visible { outline: 2px solid var(--idy-accent); outline-offset: 2px; }
+.idy-site ::selection { background: var(--idy-masthead, #0b5cad); color: #fff; }
+.idy-site :is(code, pre) { font-family: var(--idy-font); }
+.idy-site .hero { padding-block: 40px; }
+@media (max-width: 760px) {
+  .idy-site h1 { font-size: 28px; line-height: 34px; }
+  .idy-site .hero { padding-block: 28px; }
+  .idy-site :is(.wrap, .idy-header-inner, .idy-footer-inner) { width: calc(100% - 32px); }
+  .idy-site :is(.text-link, .docs-link, .questions summary) { min-height: 44px; }
+  .idy-site :is(.text-link, .docs-link) { display: inline-flex; align-items: center; }
+}
+
+.idy-site .hero { gap: 32px; }
+.idy-site .route-concept { padding-top: 16px; border-top: 2px solid var(--idy-ink); }
+.idy-site :is(.relay-node, .relay-icon circle) { fill: var(--idy-spec-fill, var(--idy-hover)); }
+.idy-site .relay-node { stroke: var(--idy-line); stroke-width: 1; }
+.idy-site .relay-icon { stroke: var(--idy-ink); }
+.idy-site .routing-section { padding-block: 36px; }
+.idy-site .section-heading { margin-bottom: 28px; }
+.idy-site .routing-content { gap: 40px; }
+.idy-site .scope-note { border: 1px solid var(--idy-line); border-top: 2px solid var(--idy-ink); padding: 20px; }
+.idy-site .scope-note h3 { font-size: 18px; line-height: 24px; }
+.idy-site .boundary-note { padding-left: 0; padding-top: 16px; border-left: 0; border-top: 1px solid var(--idy-line); }
+.idy-site .setup-section { padding-block: 36px; }
+.idy-site :is(.setup-layout, .questions-section) { gap: 40px; }
+.idy-site .questions-section { padding-block: 36px; }
+.idy-site .command-line { background: var(--idy-spec-fill, var(--idy-hover)); }
+.idy-site :is(.hero-note, .release-status, .download-other, .concept-disclaimer) { font-size: 13px; line-height: 20px; }
